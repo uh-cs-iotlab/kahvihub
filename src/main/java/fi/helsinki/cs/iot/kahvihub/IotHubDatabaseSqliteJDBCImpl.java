@@ -1,0 +1,1321 @@
+package fi.helsinki.cs.iot.kahvihub;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import fi.helsinki.cs.iot.hub.utils.Log;
+import fi.helsinki.cs.iot.hub.database.IotHubDataHandler;
+import fi.helsinki.cs.iot.hub.database.IotHubDatabase;
+import fi.helsinki.cs.iot.hub.database.IotHubDatabaseException;
+import fi.helsinki.cs.iot.hub.model.feed.AtomicFeed;
+import fi.helsinki.cs.iot.hub.model.feed.ComposedFeed;
+import fi.helsinki.cs.iot.hub.model.feed.ExecutableFeed;
+import fi.helsinki.cs.iot.hub.model.feed.ExecutableFeedDescription;
+import fi.helsinki.cs.iot.hub.model.feed.FeatureType;
+import fi.helsinki.cs.iot.hub.model.feed.Feed;
+import fi.helsinki.cs.iot.hub.model.feed.FeedEntry;
+import fi.helsinki.cs.iot.hub.model.feed.Field;
+import fi.helsinki.cs.iot.hub.model.feed.FieldDescription;
+import fi.helsinki.cs.iot.hub.model.utils.FeatureUtils;
+
+public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
+
+	private static final String TAG = "IotHubDatabaseSqliteJDBCImpl";
+	private Connection connection;
+	private boolean isOpen;
+	private String dbName;
+
+	public IotHubDatabaseSqliteJDBCImpl(String dbName) {
+		this.connection = null;
+		this.isOpen = false;
+		this.dbName = dbName;
+	}
+
+	@Override
+	public void open() throws IotHubDatabaseException {
+		if (connection == null) {
+			try {
+				Class.forName("org.sqlite.JDBC");
+				connection = DriverManager.getConnection("jdbc:sqlite:" + this.dbName);
+			} catch (Exception e) {
+				throw new IotHubDatabaseException(e.getMessage());
+			}
+		}
+		if (!isOpen){
+			isOpen = true;
+		}
+	}
+
+	@Override
+	public void close() throws IotHubDatabaseException {
+		if (isOpen){
+			isOpen = false;
+		}
+		try {
+			connection.close();
+			connection = null;
+		} catch (SQLException e) {
+			throw new IotHubDatabaseException(e.getMessage());
+		}
+	}
+
+	@Override
+	public boolean isOpen() {
+		return isOpen;
+	}
+
+	private void checkOpenness() throws IotHubDatabaseException {
+		if (!isOpen) {
+			throw new IotHubDatabaseException("The database is not open");
+		}
+	}
+
+	@Override
+	public void enableForeignKeyConstraints() throws IotHubDatabaseException {
+		executeUpdate("PRAGMA foreign_keys=ON;");
+	}
+
+	protected boolean isNew() {
+		if (isOpen && connection != null) {
+			String sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='" + IotHubDataHandler.TABLE_FEED + "';";
+			Statement statement;
+			try {
+				statement = connection.createStatement();
+				ResultSet rs = statement.executeQuery(sql);
+				boolean isNew = !rs.next();
+				rs.close();
+				statement.close();
+				return isNew;
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	protected boolean isUpgraded() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void executeUpdate(String request) throws IotHubDatabaseException {
+		checkOpenness();
+		try {
+			connection.setAutoCommit(false);
+			Statement statement = connection.createStatement();
+			statement.executeUpdate(request);
+			statement.close();
+			connection.commit();
+		} catch (SQLException e) {
+			throw new IotHubDatabaseException(e.getMessage());
+		}
+	}
+
+	/*
+	private long getKeywordId(String keyword, boolean doInsert) {
+		try {
+			String sql = "select " + IotHubDataHandler.KEY_KEYWORD_ID + 
+					" from " + IotHubDataHandler.TABLE_KEYWORD + 
+					" where " + IotHubDataHandler.KEY_KEYWORD_VALUE + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setString(1, keyword);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				rs.close();
+				ps.close();
+				return rs.getLong(IotHubDataHandler.KEY_KEYWORD_ID);
+			}
+			else if (doInsert) {
+				connection.setAutoCommit(false);
+				sql = "insert into " + IotHubDataHandler.TABLE_KEYWORD +
+						"(" + IotHubDataHandler.KEY_KEYWORD_VALUE + ") values (?)";
+				PreparedStatement ps2 = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps2.setString(1, keyword);
+				int nRow = ps2.executeUpdate();
+				ResultSet genKeysFeed = ps2.getGeneratedKeys();
+				connection.commit();
+				genKeysFeed.close();
+				ps2.close();
+				ps.close();
+				if (nRow > 1 && genKeysFeed.next()) {
+					return genKeysFeed.getLong(1);
+				}
+				else {
+					return -1;
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		return -1;
+	}
+
+	private PluginInfo getPluginInfo(long id) {
+		PluginInfo pluginInfo = null;
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_PLUGIN_INFO +
+					" where " + IotHubDataHandler.KEY_PLUGIN_INFO_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				String serviceName = rs.getString(IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME);
+				String packageName = rs.getString(IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME);
+				pluginInfo = new PluginInfo(id, serviceName, packageName);
+			}
+			rs.close();
+			ps.close();
+			return pluginInfo;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private PluginInfo addPluginInfo(String serviceName, String packageName) {
+		PluginInfo pluginInfo = null;
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			String sql = "insert into " + IotHubDataHandler.TABLE_PLUGIN_INFO + 
+					"(" + IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME +
+					"," + IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME + ") values (?, ?)";
+			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+			ps.setString(1, serviceName);
+			ps.setString(2, packageName);
+			int nRow = ps.executeUpdate();
+			ResultSet genKeys = ps.getGeneratedKeys();
+			if (nRow > 1 && genKeys.next()) {
+				long insertId = genKeys.getLong(1);
+				pluginInfo = getPluginInfo(insertId);
+			}
+			genKeys.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return pluginInfo;
+	}
+
+	private void deletePluginInfo(PluginInfo pluginInfo) {
+		long id = pluginInfo.getId();
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			String sql = "delete from " + IotHubDataHandler.TABLE_PLUGIN_INFO + 
+					" where " + IotHubDataHandler.KEY_PLUGIN_INFO_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ps.execute();
+			connection.commit();
+			Log.i(TAG, "Plugin info deleted with id: " + id);
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			Log.e(TAG, "Plugin delete failed for id: " + id);
+		}	
+
+	}
+
+	private List<PluginInfo> getListPluginInfo(String serviceName, String packageName) {
+		List<PluginInfo> pluginInfoList = new ArrayList<>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_PLUGIN_INFO + 
+					" where " + IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME + 
+					" = ? and " + IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setString(1, serviceName);
+			ps.setString(2, packageName);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_PLUGIN_INFO_ID);
+				pluginInfoList.add(new PluginInfo(id, serviceName, packageName));
+			}
+			rs.close();
+			ps.close();
+			return pluginInfoList;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private Feature getFeature(long id) {
+		Feature feature = null;
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEATURE + 
+					" where " + IotHubDataHandler.KEY_FEATURE_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long enablerId = rs.getLong(IotHubDataHandler.KEY_FEATURE_ENABLER_ID);
+				Enabler enabler = getEnabler(enablerId);
+				for (Feature ft : enabler.getFeatures()) {
+					if (ft.getId() == id) {
+						feature = ft;
+						break;
+					}
+				}
+			}
+			rs.close();
+			ps.close();
+			return feature;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private boolean isFeatureAtomic(Feature feature) {
+		boolean isAtomic = false;
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEED_FEATURE_REL +
+					" where " + IotHubDataHandler.KEY_FEED_FEATURE_REL_FEATURE_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, feature.getId());
+			ResultSet rs = ps.executeQuery();
+			isAtomic = rs.next();
+			rs.close();
+			ps.close();
+			return isAtomic;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return isAtomic;
+		}
+	}
+
+	private Feature addFeature(Enabler enabler, FeatureDescription description) {
+		return addFeature(enabler, description.getName(), description.getType());
+	}
+
+	private Feature addFeature(Enabler enabler, String name, FeatureType type) {
+		if (enabler == null) {
+			Log.e(TAG, "The enabler cannot be null to add a feature");
+			return null;
+		}
+		List<Feature> features = enabler.getFeatures();
+		for (Feature feature : features) {
+			if (feature.getName() == name) {
+				if (feature.getType() != type) {
+					Log.w(TAG, "The feature types are not similar");
+				}
+				return feature;
+			}
+		}
+		Feature feature = null;
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			String sql = "insert into " + IotHubDataHandler.TABLE_FEATURE +
+					"(" + IotHubDataHandler.KEY_FEATURE_ENABLER_ID +
+					"," + IotHubDataHandler.KEY_FEATURE_NAME + 
+					"," + IotHubDataHandler.KEY_FEATURE_TYPE + 
+					"," + IotHubDataHandler.KEY_FEATURE_IS_FEED + " values (?,?,?,?)";
+			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+			ps.setLong(1, enabler.getId());
+			ps.setString(2, name);
+			ps.setString(3, FeatureUtils.featureTypeToString(type));
+			ps.setInt(4, 0);
+			int nRow = ps.executeUpdate();
+			ResultSet genKeys = ps.getGeneratedKeys();
+			if (nRow > 1 && genKeys.next()) {
+				long insertId = genKeys.getLong(1);
+				if (insertId != -1) {
+					Log.d(TAG, "Insert of feature " + name +
+							" of type " + type + " for enabler " + enabler.getName() + " was successful");
+				} else {
+					Log.e(TAG, "Insert of feature " + name +
+							" for enabler " + enabler.getName() + " was not successful");
+				}
+				feature = getFeature(insertId);
+				if (feature == null) {
+					Log.d(TAG, "the feature should not be null");
+				}
+				else {
+					//TODO notifyFeatureAdded(feature);
+				}
+			}
+			genKeys.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			Log.w(TAG, "The enabler could not be added to the database");
+			return null;
+		}
+		return feature;
+	}
+
+	private List<Feature> getEnablerFeatures(Enabler enabler) {
+		List<Feature> features = new ArrayList<Feature>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEATURE + 
+					" where " + IotHubDataHandler.KEY_FEATURE_ENABLER_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, enabler.getId());
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_FEATURE_ID);
+				String name = rs.getString(IotHubDataHandler.KEY_FEATURE_NAME);
+				String type = rs.getString(IotHubDataHandler.KEY_FEATURE_TYPE);
+				Feature feature = new Feature(id, enabler, name, FeatureUtils.stringToFeatureType(type));
+				boolean isAtomic = isFeatureAtomic(feature);
+				feature.setAtomicFeed(isAtomic);
+				features.add(feature);			
+			}
+			rs.close();
+			ps.close();
+			return features;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+
+	private Enabler getEnabler(long id) {
+		Enabler enabler = null;
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_ENABLER +
+					" where " + IotHubDataHandler.KEY_ENABLER_ID + "= ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				String name = rs.getString(IotHubDataHandler.KEY_ENABLER_NAME);
+				String metadata = rs.getString(IotHubDataHandler.KEY_ENABLER_METADATA);
+				long pluginInfoId = rs.getLong(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO);
+				String pluginInfoConfig = rs.getString(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG);
+				PluginInfo pluginInfo = getPluginInfo(pluginInfoId);
+				if (pluginInfo != null) {
+					enabler = new Enabler(id, name, metadata, pluginInfo, pluginInfoConfig);
+					List<Feature> features = getEnablerFeatures(enabler);
+					if (!features.isEmpty()) {
+						for (Feature feature : features) {
+							enabler.addFeature(feature);
+						}
+					}
+				}
+			}
+			rs.close();
+			ps.close();
+			return enabler;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private List<Enabler> getEnabler() {
+		List<Enabler> enablers = new ArrayList<Enabler>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_ENABLER;
+			Statement ps = connection.createStatement();
+			ResultSet rs = ps.executeQuery(sql);
+			while (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_ENABLER_ID);
+				String name = rs.getString(IotHubDataHandler.KEY_ENABLER_NAME);
+				String metadata = rs.getString(IotHubDataHandler.KEY_ENABLER_METADATA);
+				long pluginInfoId = rs.getLong(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO);
+				String pluginInfoConfig = rs.getString(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG);
+				PluginInfo pluginInfo = getPluginInfo(pluginInfoId);
+				if (pluginInfo != null) {
+					Enabler enabler = new Enabler(id, name, metadata, pluginInfo, pluginInfoConfig);
+					List<Feature> features = getEnablerFeatures(enabler);
+					if (!features.isEmpty()) {
+						for (Feature feature : features) {
+							enabler.addFeature(feature);
+						}
+					}
+					enablers.add(enabler);
+				}
+			}
+			rs.close();
+			ps.close();
+			return enablers;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private Enabler addEnabler(String name, String metadata, String serviceName, String packageName) {
+
+		PluginInfo plugin = addPluginInfo(serviceName, packageName);
+		if (plugin == null) {
+			return null;
+		}
+
+		Enabler enabler = null;
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			String sql = "insert into " + IotHubDataHandler.TABLE_ENABLER +  
+					"(" + IotHubDataHandler.KEY_ENABLER_NAME + "," +
+					IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO + "," +
+					IotHubDataHandler.KEY_ENABLER_METADATA + ") values (?,?,?)";
+			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+			ps.setString(1, name);
+			ps.setLong(2, plugin.getId());
+			ps.setString(3, metadata);
+			int nRow = ps.executeUpdate();
+			ResultSet genKeys = ps.getGeneratedKeys();
+			if (nRow > 1 && genKeys.next()) {
+				long insertId = genKeys.getLong(1);
+				enabler = getEnabler(insertId);
+				if (enabler == null) {
+					Log.d(TAG, "the enabler should not be null");
+				}
+			}
+			genKeys.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			Log.w(TAG, "The enabler could not be added to the database");
+			return null;
+		}
+		if (enabler != null) {
+			//TODO I should notify the listeners
+			//notifyEnablerAdded(enabler);
+		}
+		return enabler;
+	}
+
+	private void deleteEnabler(Enabler enabler) {
+		deleteEnabler(enabler.getId());
+		//TODO notifyEnablerRemoved(enabler);
+	}
+
+	private void deleteEnabler(long id) {
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			String sql = "delete from " + IotHubDataHandler.TABLE_ENABLER +
+					" where " + IotHubDataHandler.KEY_ENABLER_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ps.execute();
+			connection.commit();
+			Log.i(TAG, "Enabler deleted with id: " + id);
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			Log.e(TAG, "Enabler delete failed for id: " + id);
+		}	
+	}
+
+	private AtomicFeed addAtomicFeed(String name, String metadata,
+			List<String> keywords, Feature feature) {
+		AtomicFeed feed = null;
+		//		try {
+		//			checkOpenness();
+		//			connection.setAutoCommit(false);
+		//			String sql = "insert into " + IotHubDataHandler.TABLE_FEED + 
+		//					"(" + IotHubDataHandler.KEY_FEED_NAME + 
+		//					"," + IotHubDataHandler.KEY_FEED_METADATA + ") values (?, ?)";
+		//			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+		//			ps.setString(1, name);
+		//			ps.setString(2, metadata);
+		//			int nRow = ps.executeUpdate();
+		//			ResultSet genKeysFeed = ps.getGeneratedKeys();
+		//			if (nRow > 1 && genKeysFeed.next()) {
+		//				long insertIdFeed = genKeysFeed.getLong(1);
+		//				//Now it is time to set the atomic feed
+		//				String sql2 = "insert into " + IotHubDataHandler.TABLE_ATOMIC_FEED + 
+		//						"(" + IotHubDataHandler.KEY_ATOMIC_FEED_ID + 
+		//						"," + IotHubDataHandler.KEY_ATOMIC_FEATURE_ID + ") values (?, ?)";
+		//				PreparedStatement ps2 = connection.prepareStatement(sql2);
+		//				ps2.setLong(1, insertIdFeed);
+		//				ps2.setLong(2, feature.getId());
+		//				ps2.executeUpdate();
+		//				//Now the keywords
+		//				if (keywords != null) {
+		//					String sql3 = "insert into " + IotHubDataHandler.TABLE_KEYWORD_FEED_REL + 
+		//							"(" + IotHubDataHandler.KEY_KEYWORD_FEED_FEED_ID + 
+		//							"," + IotHubDataHandler.KEY_KEYWORD_FEED_KEYWORD_ID + ") values (?, ?)";
+		//					PreparedStatement ps3 = connection.prepareStatement(sql3);
+		//					for (String keyword : keywords) {
+		//						long keywordId = getKeywordId(keyword, true);
+		//						if (keywordId != -1) {
+		//							ps3.setLong(1, insertIdFeed);
+		//							ps3.setLong(2, keywordId);
+		//							ps3.executeUpdate();
+		//						}
+		//					}
+		//					ps3.close();
+		//				}	
+		//				feed = getAtomicFeed(insertIdFeed);
+		//				ps2.close();
+		//			}
+		//			ps.close();
+		//			connection.commit();
+		//		} catch (SQLException | IotHubDatabaseException e) {
+		//			e.printStackTrace();
+		//			return null;
+		//		}	
+		return feed;
+	}
+	 */
+
+	private AtomicFeed getAtomicFeed(long id) {
+		AtomicFeed atomicFeed = null;
+		//		try {
+		//			checkOpenness();
+		//			String sql = "select * from " + IotHubDataHandler.TABLE_ATOMIC_FEED +
+		//					" where " + IotHubDataHandler.KEY_ATOMIC_FEED_ID + " = ?";
+		//			PreparedStatement ps = connection.prepareStatement(sql);
+		//			ps.setLong(1, id);
+		//			ResultSet rs = ps.executeQuery();
+		//			if (rs.next()) {
+		//				long feedId = rs.getLong(IotHubDataHandler.KEY_ATOMIC_FEED_ID);
+		//				long featureId = rs.getLong(IotHubDataHandler.KEY_ATOMIC_FEATURE_ID);
+		//				String sql2 = "select * from " + IotHubDataHandler.TABLE_FEED +
+		//						" where " + IotHubDataHandler.KEY_FEED_ID + " = ?";
+		//				PreparedStatement ps2 = connection.prepareStatement(sql2);
+		//				ps2.setLong(1, feedId);
+		//				ResultSet rs2 = ps2.executeQuery();
+		//				if (rs2.next()) {
+		//					String name = rs2.getString(IotHubDataHandler.KEY_FEED_NAME);
+		//					String metadata = rs2.getString(IotHubDataHandler.KEY_FEED_METADATA);
+		//					List<String> keywords = getFeedKeywords(feedId);
+		//					Feature feature = getFeature(featureId);
+		//					if (feature == null) {
+		//			            Log.e(TAG, "The feature for the atomic feed is not existing");
+		//			        }
+		//					else {
+		//						atomicFeed = new AtomicFeed(feedId, name, metadata, keywords, feature);
+		//					}
+		//				}
+		//				ps2.close();
+		//			}
+		//			ps.close();
+		//			return atomicFeed;
+		//		} catch (SQLException | IotHubDatabaseException e) {
+		//			e.printStackTrace();
+		//			return null;
+		//		}
+		return atomicFeed;
+	}
+
+	private List<AtomicFeed> getAtomicFeeds () {
+		List<AtomicFeed> atomicFeedList = new ArrayList<AtomicFeed>();
+		try {
+			checkOpenness();
+			//			String sql = "select * from " + IotHubDataHandler.TABLE_ATOMIC_FEED;
+			//			Statement statement = connection.createStatement();
+			//			ResultSet rs = statement.executeQuery(sql);
+			//			if (rs.next()) {
+			//				long feedId = rs.getLong(IotHubDataHandler.KEY_ATOMIC_FEED_ID);
+			//				atomicFeedList.add(getAtomicFeed(feedId));
+			//			}
+			//			statement.close();
+			return atomicFeedList;
+		} catch (IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private void addFeedFields(long id, List<FieldDescription> fields) throws SQLException {
+		if (fields == null || fields.size() == 0) {
+			Log.e(TAG, "One cannot create a composed feed with no fields");
+			return;
+		}
+		String sqlInsert = "INSERT INTO " + IotHubDataHandler.TABLE_FIELD +
+				"(" + IotHubDataHandler.KEY_FIELD_FEED_ID + 
+				"," + IotHubDataHandler.KEY_FIELD_NAME +
+				"," + IotHubDataHandler.KEY_FIELD_METADATA + 
+				"," + IotHubDataHandler.KEY_FIELD_TYPE + 
+				"," + IotHubDataHandler.KEY_FIELD_OPTIONAL + ") values (?,?,?,?,?)";
+		PreparedStatement psInsert = connection.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS);
+		for (FieldDescription fd : fields) {
+			psInsert.setLong(1, id);
+			psInsert.setString(2, fd.getName());
+			psInsert.setString(3, fd.getMetadata());
+			psInsert.setString(4, FeatureUtils.featureTypeToString(fd.getType()));
+			psInsert.setInt(5, fd.isOptional() ? 1 : 0);
+			psInsert.executeUpdate();
+			ResultSet genKeysFeed = psInsert.getGeneratedKeys();
+			if (genKeysFeed.next()) {
+				long idField = genKeysFeed.getLong(1);
+				addFieldKeywords(idField, fd.getKeywords());
+			}
+			genKeysFeed.close();
+		}
+		psInsert.close();
+	}
+
+	private boolean compareComposeFeeds(ComposedFeed feed, String name, String metadata, 
+			boolean storage, boolean readable, boolean writable, 
+			List<String> keywords, List<FieldDescription> fields) {
+		//TODO auto generated stuff
+		return true;
+	}
+
+	@Override
+	public ComposedFeed addComposedFeed(String name, String metadata, 
+			boolean storage, boolean readable, boolean writable, 
+			List<String> keywords, List<FieldDescription> fields) {
+		ComposedFeed composedFeed = null;
+		if (fields == null || fields.size() == 0) {
+			Log.e(TAG, "One cannot create a composed feed with no fields");
+			return null;
+		}
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			//First things first, insert the feed's values to the feed table
+			String sqlFeedInsert = "INSERT INTO " + IotHubDataHandler.TABLE_FEED + "("
+					+ IotHubDataHandler.KEY_FEED_NAME + "," 
+					+ IotHubDataHandler.KEY_FEED_METADATA + ","
+					+ IotHubDataHandler.KEY_FEED_TYPE + ","
+					+ IotHubDataHandler.KEY_FEED_STORAGE + "," 
+					+ IotHubDataHandler.KEY_FEED_READABLE + "," 
+					+ IotHubDataHandler.KEY_FEED_WRITABLE + ") VALUES (?,?,?,?,?,?)";
+			PreparedStatement psFeedInsert = connection.prepareStatement(sqlFeedInsert, Statement.RETURN_GENERATED_KEYS);
+			psFeedInsert.setString(1, name);
+			psFeedInsert.setString(2, metadata);
+			psFeedInsert.setString(3, IotHubDataHandler.COMPOSED_FEED);
+			psFeedInsert.setInt(4, storage ? 1 : 0);
+			psFeedInsert.setInt(5, readable ? 1 : 0);
+			psFeedInsert.setInt(6, writable ? 1 : 0);
+			psFeedInsert.executeUpdate();
+			ResultSet genKeysFeed = psFeedInsert.getGeneratedKeys();
+			if (genKeysFeed.next()) {
+				long insertIdFeed = genKeysFeed.getLong(1);
+				//Now we add the keywords
+				addFeedKeywords(insertIdFeed, keywords);
+				//Now we add the fields
+				addFeedFields(insertIdFeed, fields);
+				//At point we should have everything set so it is time to retrieve the composed feed from the database
+				Log.d(TAG, "Now i will try to collect the composed feed that was just added to the db");
+				composedFeed = getComposedFeed(insertIdFeed);
+				if (composedFeed == null) {
+					Log.e(TAG, "The feed should not be null");
+				}
+				//Now I want to make some checks
+				if (!compareComposeFeeds(composedFeed, name, metadata, 
+						storage, readable, writable, keywords, fields)) {
+					Log.e(TAG, "Retrieving feed " + name + " did not work");
+					composedFeed = null;
+				}
+			}
+			else {
+				Log.e(TAG, "The insert of feed " + name + " did not work");
+			}
+			genKeysFeed.close();
+			psFeedInsert.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			composedFeed = null;
+		}
+		try {
+			if (composedFeed == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return composedFeed;
+	}
+
+	private ComposedFeed getComposedFeed(long id) {
+		ComposedFeed composedFeed = null;
+		try {
+			checkOpenness();
+			String feedIdFeed = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_ID;
+			String fieldIdFeed = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_FEED_ID;
+			String attr1 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_NAME;
+			String attr2 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_METADATA;
+			String attrType = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_TYPE;
+			String attr3 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_STORAGE;
+			String attr4 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_READABLE;
+			String attr5 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_WRITABLE;
+			String attr6 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_ID;
+			String attr7 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_NAME;
+			String attr8 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_METADATA;
+			String attr9 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_TYPE;
+			String attr10 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_OPTIONAL;
+			String sql = "SELECT " + attr1 + ", " + attr2 + ", " + attr3 + ", " + attr4 + ", " +
+					attr5 + ", " + attr6 + ", " + attr7 + ", " + attr8 + ", " + attr9 + ", " + attr10 +
+					" FROM " + IotHubDataHandler.TABLE_FEED + 
+					" INNER JOIN " + IotHubDataHandler.TABLE_FIELD + " ON " +
+					feedIdFeed + " = " + fieldIdFeed + 
+					" WHERE " + feedIdFeed + " = ?" +
+					" AND " + attrType + " = '" + IotHubDataHandler.COMPOSED_FEED + "'";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				String feedName = rs.getString(1);
+				String feedMetadata = rs.getString(2);
+				boolean feedStorage = rs.getInt(3) != 0;
+				boolean feedReadable = rs.getInt(4) != 0;
+				boolean feedWritable = rs.getInt(5) != 0;
+				Map<String, Field> fieldList = new HashMap<>();
+				do {
+					long fieldId = rs.getLong(6);
+					String fieldName = rs.getString(7);
+					String fieldMetadata = rs.getString(8);
+					FeatureType fieldType = FeatureUtils.stringToFeatureType(rs.getString(9));
+					boolean fieldOptional = rs.getInt(10) != 0;
+					List<String> keywords = getFieldKeywords(fieldId);
+					Field field = new Field(fieldId, fieldName, fieldType, fieldMetadata, fieldOptional, keywords);
+					fieldList.put(fieldName, field);
+				} while (rs.next());
+				List<String> keywords = getFeedKeywords(id);
+				composedFeed = new ComposedFeed(id, feedName, feedMetadata, keywords, feedStorage, feedReadable, feedWritable, fieldList);
+			}
+			else {
+				Log.e(TAG, "No results for this request: " + ps.toString());
+			}
+			rs.close();
+			ps.close();
+			return composedFeed;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private List<ComposedFeed> getComposedFeeds () {
+		List<ComposedFeed> composedFeedList = new ArrayList<ComposedFeed>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEED +
+					" WHERE " + IotHubDataHandler.KEY_FEED_TYPE + " = '" + IotHubDataHandler.COMPOSED_FEED + "'";
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(sql);
+			if (rs.next()) {
+				long feedId = rs.getLong(IotHubDataHandler.KEY_FEED_ID);
+				composedFeedList.add(getComposedFeed(feedId));
+			}
+			rs.close();
+			statement.close();
+			return composedFeedList;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private ExecutableFeed getExecutableFeed(long id) {
+		ExecutableFeed executableFeed = null;
+		try {
+			checkOpenness();
+			String feedIdFeed = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_ID;
+			String attr1 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_NAME;
+			String attr2 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_METADATA;
+			String attrType = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_TYPE;
+			String attr3 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_READABLE;
+			String attr4 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_WRITABLE;
+			String sql = "SELECT " + attr1 + ", " + attr2 + ", " + attr3 + ", " + attr4 +
+					" FROM " + IotHubDataHandler.TABLE_FEED +
+					" WHERE " + feedIdFeed + " = ?" +
+					" AND " + attrType + " = '" + IotHubDataHandler.EXECUTABLE_FEED + "'";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				String feedName = rs.getString(1);
+				String feedMetadata = rs.getString(2);
+				boolean feedReadable = rs.getInt(3) != 0;
+				boolean feedWritable = rs.getInt(4) != 0;
+				//TODO make a table for the feed description and get the data from it
+				ExecutableFeedDescription description = new ExecutableFeedDescription();
+				List<String> keywords = getFeedKeywords(id);
+				executableFeed = new ExecutableFeed(id, feedName, feedMetadata, keywords, feedReadable, feedWritable, description);
+			}
+			else {
+				Log.e(TAG, "No results for this request: " + ps.toString());
+			}
+			rs.close();
+			ps.close();
+			return executableFeed;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	@Override
+	public ExecutableFeed addExecutableFeed(String name, String metadata,
+			boolean readable, boolean writable, List<String> keywords,
+			ExecutableFeedDescription executableFeedDescription) {
+		ExecutableFeed executableFeed = null;
+		if (executableFeedDescription == null) {
+			Log.e(TAG, "One cannot create an executable feed with no description");
+			return null;
+		}
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			//First things first, insert the feed's values to the feed table
+			String sqlFeedInsert = "INSERT INTO " + IotHubDataHandler.TABLE_FEED + "("
+					+ IotHubDataHandler.KEY_FEED_NAME + "," 
+					+ IotHubDataHandler.KEY_FEED_METADATA + ","
+					+ IotHubDataHandler.KEY_FEED_TYPE + ","
+					+ IotHubDataHandler.KEY_FEED_STORAGE + "," 
+					+ IotHubDataHandler.KEY_FEED_READABLE + "," 
+					+ IotHubDataHandler.KEY_FEED_WRITABLE + ") VALUES (?,?,?,0,?,?)";
+			PreparedStatement psFeedInsert = connection.prepareStatement(sqlFeedInsert, Statement.RETURN_GENERATED_KEYS);
+			psFeedInsert.setString(1, name);
+			psFeedInsert.setString(2, metadata);
+			psFeedInsert.setString(3, IotHubDataHandler.EXECUTABLE_FEED);
+			psFeedInsert.setInt(4, readable ? 1 : 0);
+			psFeedInsert.setInt(5, writable ? 1 : 0);
+			psFeedInsert.executeUpdate();
+			ResultSet genKeysFeed = psFeedInsert.getGeneratedKeys();
+			if (genKeysFeed.next()) {
+				long insertIdFeed = genKeysFeed.getLong(1);
+				//Now we add the keywords
+				addFeedKeywords(insertIdFeed, keywords);
+				//Now we add the fields
+				addExecutableFeedDescription(insertIdFeed, executableFeedDescription);
+				//At point we should have everything set so it is time to retrieve the composed feed from the database
+				Log.d(TAG, "Now i will try to collect the executable feed that was just added to the db");
+				executableFeed = getExecutableFeed(insertIdFeed);
+				if (executableFeed == null) {
+					Log.e(TAG, "The feed should not be null");
+				}
+				//Now I want to make some checks
+				if (!compareExecutableFeeds(executableFeed, name, metadata, 
+						readable, writable, keywords, executableFeedDescription)) {
+					Log.e(TAG, "Retrieving feed " + name + " did not work");
+					executableFeed = null;
+				}
+			}
+			else {
+				Log.e(TAG, "The insert of feed " + name + " did not work");
+			}
+			genKeysFeed.close();
+			psFeedInsert.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			executableFeed = null;
+		}
+		try {
+			if (executableFeed == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return executableFeed;
+	}
+
+	private boolean compareExecutableFeeds(ExecutableFeed executableFeed,
+			String name, String metadata, boolean readable, boolean writable,
+			List<String> keywords,
+			ExecutableFeedDescription executableFeedDescription) {
+		// TODO Auto-generated method stub
+		return true;
+	}
+
+	private void addExecutableFeedDescription(long insertIdFeed,
+			ExecutableFeedDescription executableFeedDescription) {
+		// TODO Auto-generated method stub
+		// Add a table to store the informations about executable feeds
+	}
+	
+	private List<ExecutableFeed> getExecutableFeeds () {
+		List<ExecutableFeed> executableFeedList = new ArrayList<>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEED +
+					" WHERE " + IotHubDataHandler.KEY_FEED_TYPE + " = '" + IotHubDataHandler.EXECUTABLE_FEED + "'";
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(sql);
+			if (rs.next()) {
+				long feedId = rs.getLong(IotHubDataHandler.KEY_FEED_ID);
+				executableFeedList.add(getExecutableFeed(feedId));
+			}
+			rs.close();
+			statement.close();
+			return executableFeedList;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private Feed getFeed(long feedId) {
+		Feed feed = null;
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEED +
+					" WHERE " + IotHubDataHandler.KEY_FEED_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, feedId);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_FEED_ID);
+				String type = rs.getString(IotHubDataHandler.KEY_FEED_TYPE);
+				if (IotHubDataHandler.COMPOSED_FEED.equals(type)) {
+					feed = getComposedFeed(id);
+				}
+				else if (IotHubDataHandler.ATOMIC_FEED.equals(type)) {
+					feed = getAtomicFeed(id);
+				}
+				else if (IotHubDataHandler.EXECUTABLE_FEED.equals(type)) {
+					feed = getExecutableFeed(id);
+				}
+				else {
+					Log.e(TAG, "Uknown type of feed '" + type + "', must be (" + 
+							IotHubDataHandler.ATOMIC_FEED + ", " + 
+							IotHubDataHandler.COMPOSED_FEED + ", " + 
+							IotHubDataHandler.EXECUTABLE_FEED + ")");
+				}
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}	
+		return feed;
+	}
+
+	@Override
+	public Feed getFeed(String name) {
+		Feed feed = null;
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEED +
+					" WHERE " + IotHubDataHandler.KEY_FEED_NAME + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setString(1, name);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_FEED_ID);
+				String type = rs.getString(IotHubDataHandler.KEY_FEED_TYPE);
+				if (IotHubDataHandler.COMPOSED_FEED.equals(type)) {
+					feed = getComposedFeed(id);
+				}
+				else if (IotHubDataHandler.ATOMIC_FEED.equals(type)) {
+					feed = getAtomicFeed(id);
+				}
+				else if (IotHubDataHandler.EXECUTABLE_FEED.equals(type)) {
+					feed = getExecutableFeed(id);
+				}
+				else {
+					Log.e(TAG, "Uknown type of feed '" + type + "', must be (" + 
+							IotHubDataHandler.ATOMIC_FEED + ", " + 
+							IotHubDataHandler.COMPOSED_FEED + ", " + 
+							IotHubDataHandler.EXECUTABLE_FEED + ")");
+				}
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}	
+		return feed;
+	}
+
+	@Override
+	public List<Feed> getFeeds() {
+		List<Feed> feeds = new ArrayList<Feed>();
+		feeds.addAll(getAtomicFeeds());
+		feeds.addAll(getComposedFeeds());
+		feeds.addAll(getExecutableFeeds());
+		return feeds;
+	}
+
+	@Override
+	public Feed deleteFeed(String name) {
+		Feed feed = null;
+		try {
+			checkOpenness();
+			feed = getFeed(name);
+			if (feed == null) {
+				Log.e(TAG, "No feed was found to delete with name " + name);
+				return null;
+			}
+			String sql = "DELETE FROM " + IotHubDataHandler.TABLE_FEED +
+					" WHERE " + IotHubDataHandler.KEY_FEED_NAME + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setString(1, name);
+			if (ps.executeUpdate() != 1) {
+				Log.e(TAG, "Feed " + name + " was not deleted from the database");
+			}
+			else {
+				Log.d(TAG, "Feed " + name + " was deleted from the database");
+			}
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return feed;
+	}
+
+	private void addFeedKeywords(long id, List<String> keywords) throws SQLException {
+		addKeywords(id, keywords, true);
+	}
+
+	private void addFieldKeywords(long id, List<String> keywords) throws SQLException {
+		addKeywords(id, keywords, false);
+	}
+
+	private void addKeywords(long id, List<String> keywords, boolean isFeed) throws SQLException {
+		if (keywords == null || keywords.size() == 0) {
+			Log.d(TAG, "No keywords to be added for " + (isFeed ? "feed" : "field") + " id: " + id);
+			return;
+		}
+		String sqlSelectKeyword = "SELECT " + IotHubDataHandler.KEY_KEYWORD_ID + 
+				" FROM " + IotHubDataHandler.TABLE_KEYWORD + 
+				" WHERE " + IotHubDataHandler.KEY_KEYWORD_VALUE + " = ?";
+		String sqlInsertKeyword = "insert into " + IotHubDataHandler.TABLE_KEYWORD +
+				"(" + IotHubDataHandler.KEY_KEYWORD_VALUE + ") values (?)";
+		String sqlInsertRelation = isFeed ? ("insert into " + IotHubDataHandler.TABLE_KEYWORD_FEED_REL +
+				"(" + IotHubDataHandler.KEY_KEYWORD_FEED_KEYWORD_ID + 
+				"," + IotHubDataHandler.KEY_KEYWORD_FEED_FEED_ID + ") values (?,?)") : (
+						"insert into " + IotHubDataHandler.TABLE_KEYWORD_FIELD_REL +
+						"(" + IotHubDataHandler.KEY_KEYWORD_FIELD_KEYWORD_ID + 
+						"," + IotHubDataHandler.KEY_KEYWORD_FIELD_FIELD_ID + ") values (?,?)");
+		PreparedStatement psSelectKeyword = connection.prepareStatement(sqlSelectKeyword);
+		PreparedStatement psInsertKeyword = connection.prepareStatement(sqlInsertKeyword, Statement.RETURN_GENERATED_KEYS);
+		PreparedStatement psInsertRel = connection.prepareStatement(sqlInsertRelation);
+		for (String keyword : keywords) {
+			psSelectKeyword.setString(1, keyword);
+			ResultSet rs = psSelectKeyword.executeQuery();
+			if (rs.next()) {
+				long keywordId = rs.getLong(IotHubDataHandler.KEY_KEYWORD_ID);
+				psInsertRel.setLong(1, keywordId);
+				psInsertRel.setLong(2, id);
+				if (psInsertRel.executeUpdate() <= 0) {
+					Log.e(TAG, "Linking keyword " + keyword + " and " + (isFeed ? "feed " : "field ") + id + " did not work");
+				}
+			} else {
+				psInsertKeyword.setString(1, keyword);
+				psInsertKeyword.executeUpdate();
+				ResultSet genKeysFeed = psInsertKeyword.getGeneratedKeys();
+				if (genKeysFeed.next()) {
+					long insertIdKeyword = genKeysFeed.getLong(1);
+					psInsertRel.setLong(1, insertIdKeyword);
+					psInsertRel.setLong(2, id);
+					if (psInsertRel.executeUpdate() <= 0) {
+						Log.e(TAG, "Linking keyword " + keyword + " and " + (isFeed ? "feed " : "field ") + id + " did not work");
+					}
+				}
+				genKeysFeed.close();
+			}
+			rs.close();
+		}
+		psSelectKeyword.close();
+		psInsertKeyword.close();
+		psInsertRel.close();
+	}
+
+	private List<String> getFeedKeywords(long id) {
+		List<String> keywords = new ArrayList<String>();
+		try {
+			checkOpenness();
+			final String query = "SELECT " + IotHubDataHandler.KEY_KEYWORD_VALUE + " FROM " +
+					IotHubDataHandler.TABLE_KEYWORD + " a INNER JOIN " +
+					IotHubDataHandler.TABLE_KEYWORD_FEED_REL + " b ON a." +
+					IotHubDataHandler.KEY_KEYWORD_ID + " = b." +
+					IotHubDataHandler.KEY_KEYWORD_FEED_KEYWORD_ID +
+					" WHERE b." + IotHubDataHandler.KEY_KEYWORD_FEED_FEED_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				String keyword = rs.getString(IotHubDataHandler.KEY_KEYWORD_VALUE);
+				keywords.add(keyword);
+			}
+			rs.close();
+			ps.close();
+			return keywords;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private List<String> getFieldKeywords(long id) {
+		List<String> keywords = new ArrayList<String>();
+		try {
+			checkOpenness();
+			final String query = "SELECT " + IotHubDataHandler.KEY_KEYWORD_VALUE + " FROM " +
+					IotHubDataHandler.TABLE_KEYWORD + " a INNER JOIN " +
+					IotHubDataHandler.TABLE_KEYWORD_FIELD_REL + " b ON a." +
+					IotHubDataHandler.KEY_KEYWORD_ID + " = b." +
+					IotHubDataHandler.KEY_KEYWORD_FIELD_KEYWORD_ID +
+					" WHERE b." + IotHubDataHandler.KEY_KEYWORD_FIELD_FIELD_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				String keyword = rs.getString(IotHubDataHandler.KEY_KEYWORD_VALUE);
+				keywords.add(keyword);
+			}
+			rs.close();
+			ps.close();
+			return keywords;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+
+	/**
+	 * TODO there should be more filters available in the future
+	 * such as paging, max number of entries, timestamp, etc.
+	 */
+	@Override
+	public List<FeedEntry> getFeedEntries(Feed feed) {
+		if (feed == null) {
+			Log.e(TAG, "Cannot get entries from a NULL feed");
+			return null;
+		}
+		List<FeedEntry> entries = new ArrayList<>();
+		try {
+			checkOpenness();
+			final String query = "SELECT * FROM " +
+					IotHubDataHandler.TABLE_FEED_ENTRY +
+					" WHERE " + IotHubDataHandler.KEY_FEED_ENTRY_FEED_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, feed.getId());
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_FEED_ENTRY_ID);
+				Date timestamp = new Date(rs.getLong(IotHubDataHandler.KEY_FEED_ENTRY_TIMESTAMP));
+				JSONObject data = new JSONObject(rs.getString(IotHubDataHandler.KEY_FEED_ENTRY_DATA));
+				entries.add(new FeedEntry(id, feed, timestamp, data));
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+		return entries;
+	}
+
+	private FeedEntry getFeedEntry(long id) {
+		FeedEntry entry = null;
+		try {
+			checkOpenness();
+			final String query = "SELECT * FROM " +
+					IotHubDataHandler.TABLE_FEED_ENTRY +
+					" WHERE " + IotHubDataHandler.KEY_FEED_ENTRY_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long feedId = rs.getLong(IotHubDataHandler.KEY_FEED_ENTRY_FEED_ID);
+				Date timestamp = new Date(rs.getLong(IotHubDataHandler.KEY_FEED_ENTRY_TIMESTAMP));
+				JSONObject data;
+				try {
+					data = new JSONObject(rs.getString(IotHubDataHandler.KEY_FEED_ENTRY_DATA));
+					Feed feed = getFeed(feedId);
+					if (feed != null) {
+						entry = new FeedEntry(id, feed, timestamp, data);
+					} else {
+						Log.e(TAG, "The feed corresponding to the entry cannot be found");
+					}
+				} catch (JSONException e) {
+					Log.e(TAG, "Could not retrieve the data from this entry");
+					
+				}
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return entry;
+	}
+
+	@Override
+	public FeedEntry addFeedEntry(Feed feed, JSONObject data) {
+		if (feed == null) {
+			Log.e(TAG, "Cannot add entry from a NULL feed");
+			return null;
+		}
+		FeedEntry entry = null;
+		try {
+			checkOpenness();
+			final String query = "INSERT INTO " +
+					IotHubDataHandler.TABLE_FEED_ENTRY +
+					" ( " + IotHubDataHandler.KEY_FEED_ENTRY_FEED_ID + "," + 
+					IotHubDataHandler.KEY_FEED_ENTRY_TIMESTAMP + "," +
+					IotHubDataHandler.KEY_FEED_ENTRY_DATA + ") VALUES (?,?,?)";
+			PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+			ps.setLong(1, feed.getId());
+			ps.setLong(2, new Date().getTime());
+			ps.setString(3, data.toString());
+			ps.executeUpdate();
+			ResultSet genKeysFeed = ps.getGeneratedKeys();
+			if (genKeysFeed.next()) {
+				long insertIdEntry = genKeysFeed.getLong(1);
+				entry = getFeedEntry(insertIdEntry);
+			}
+			genKeysFeed.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return entry;
+	}
+
+	@Override
+	public FeedEntry deleteFeedEntry(FeedEntry entry) {
+		if (entry == null) {
+			Log.e(TAG, "Cannot delete null entry");
+			return null;
+		}
+		try {
+			checkOpenness();
+			final String query = "DELETE FROM " +
+					IotHubDataHandler.TABLE_FEED_ENTRY +
+					" WHERE " + IotHubDataHandler.KEY_FEED_ENTRY_ID + " = ? ";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, entry.getId());
+			if (ps.executeUpdate() != 1) {
+				Log.e(TAG, "could not delete entry " + entry.toString());
+			}
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return entry;
+	}
+}
