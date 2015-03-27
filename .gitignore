@@ -18,4 +18,7 @@ build/
 .classpath
 .project
 .settings/
+.gradle/
 
+*.db
+www/
