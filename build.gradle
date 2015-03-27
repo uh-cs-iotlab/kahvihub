@@ -2,6 +2,7 @@ apply plugin: 'java'
 
 sourceCompatibility = 1.7
 version = '1.0'
+
 jar {
     manifest {
         attributes 'Implementation-Title': 'Full Java implementation of the IoT Hub',
@@ -9,10 +10,22 @@ jar {
     }
 }
 
+//create a single Jar with all dependencies
+task jarStandalone (type: Jar) {
+	manifest {
+        attributes 'Implementation-Title': 'Full Java implementation of the IoT Hub',  
+        	'Implementation-Version': version,
+        	'Main-Class': 'fi.helsinki.cs.iot.kahvihub.KahviHub'
+    }
+    baseName = project.name + '-standalone'
+    from { configurations.runtime.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+ 
 repositories {
 	mavenLocal()
     mavenCentral()
-}
+} 
 
 dependencies {
     compile group: 'commons-collections', name: 'commons-collections', version: '3.2'
