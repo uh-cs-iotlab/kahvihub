@@ -32,7 +32,13 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.+'
     compile 'org.json:json:20090211'
     compile 'fi.helsinki.cs.iot.hub:java-iothub-core:1.0'
-    runtime 'org.xerial:sqlite-jdbc:3.8.7'
+    compile 'fi.helsinki.cs.iot.hub:kahvihub-native-plugin:1.0'
+    compile 'commons-cli:commons-cli:1.2'
+    compile 'com.mashape.unirest:unirest-java:1.4.5'
+    compile 'com.google.apis:google-api-services-calendar:v3-rev125-1.20.0'
+    compile 'com.google.oauth-client:google-oauth-client-java6:1.11.0-beta'
+    compile 'com.google.oauth-client:google-oauth-client-jetty:1.11.0-beta'
+    runtime 'org.xerial:sqlite-jdbc:3.7.15-M1'
 }
 
 test {

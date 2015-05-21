@@ -19,37 +19,32 @@ package fi.helsinki.cs.iot.kahvihub;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+
+import org.apache.commons.cli.BasicParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 import fi.helsinki.cs.iot.hub.api.BasicIotHubApiRequestHandler;
+import fi.helsinki.cs.iot.hub.api.ListHttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
-import fi.helsinki.cs.iot.hub.database.IotHubDatabaseException;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.utils.Logger;
-import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
+import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
+import fi.helsinki.cs.iot.kahvihub.admin.AdminHttpRequestHandler;
+import fi.helsinki.cs.iot.kahvihub.conf.ConfigurationFileParser;
+import fi.helsinki.cs.iot.kahvihub.conf.ConfigurationParsingException;
+import fi.helsinki.cs.iot.kahvihub.conf.HubConfig;
 
 /**
  * 
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
- * Based on the SimpleWebServer example of NanoHttpd
  */
-public class KahviHub extends NanoHTTPD {
-	
-	private String host;
-	private int port;
-	private File rootDir;
-	private BasicIotHubApiRequestHandler requestHandler;
-	
-	public KahviHub(String host, int port, File rootDir) {
-		super(host, port);
-		this.rootDir = rootDir;
-		this.requestHandler = new BasicIotHubApiRequestHandler(this.rootDir);
-		this.init();
-	}
-	
-	//TODO init should be reading a config file
-	public void init() {
+public class KahviHub {
+
+	private static void setLogger(HubConfig config) {
 		//TODO I would need a better logger, maybe even the one from android
 		Logger logger = new Logger(){
 			@Override
@@ -70,111 +65,79 @@ public class KahviHub extends NanoHTTPD {
 			}
 		};
 		Log.setLogger(logger);
-		//TODO this would have to be configured via a configuration file
-		IotHubDataAccess.setInstance(new IotHubDbHandlerSqliteJDBCImpl("kahvihub.db", 0, true));
-	}
-	
-	public String getHost() {
-		return this.host;
-	}
-	
-	public int getPort() {
-		return this.port;
-	}
-	
-	public File getRootDir() {
-		return this.rootDir;
-	}
-	
-	@Override
-	public void start() throws IOException {
-		// TODO Auto-generated method stub
-		super.start();
-		try {
-			IotHubDataAccess.getInstance().open();
-		} catch (IotHubDatabaseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println("Server started");
 	}
 
-	@Override
-	public void stop() {
-		// TODO Auto-generated method stub
-		super.stop();
-		try {
-			IotHubDataAccess.getInstance().close();
-		} catch (IotHubDatabaseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println("Server stopped");
-		
+	private static void setIotHubDataHandler(HubConfig config) {
+		String dbfilename = config.getDbdir() + config.getDbName();
+		IotHubDataAccess.setInstance(new IotHubDbHandlerSqliteJDBCImpl(dbfilename, 
+				config.getDbVersion(), config.isDebugMode()));
 	}
-	
-	private String getMimeType(IHTTPSession session) {
-        Map<String, String> header = session.getHeaders();
-        return header.get("Content-type");
-    }
-	
-	private String getBodyData(IHTTPSession session) throws IOException, ResponseException {
-        if (session.getMethod() == Method.PUT || session.getMethod() == Method.POST) {
-            Map<String, String> files = new HashMap<String, String>();
-            session.parseBody(files);
-            String bodyData = files.get("postData");
-            return bodyData;
-        } else {
-            return null;
-        }
-    }
 
-	@Override
-	public Response serve(IHTTPSession session) {
-		String bodyData = null;
-        try {
-            bodyData = getBodyData(session);
-        } catch (Exception e) {
-        }
-
-        String uri = session.getUri();
-        Method method = session.getMethod();
-        String mimeType = getMimeType(session);
-        //FIXME connect the requestId to the database logger
-        //long requestId = 0L;
-        Response response = requestHandler.handleRequest(method, 
-        		uri, session.getParms(), mimeType, bodyData);
-        //TODO log the time at the call of serve and when the response is ready
-        return response;
+	//TODO init should be reading a config file
+	public static void init(HubConfig config) {
+		setLogger(config);
+		setIotHubDataHandler(config);
 	}
 
 	public static void main(String[] args) throws InterruptedException {
-		int port = 8080;
-		String host = "127.0.0.1";
-		File rootDir = new File("www");
 		
-		final KahviHub server = new KahviHub(host, port, rootDir);
+		// create Options object
+		Options options = new Options();
+		// add conf file option
+		options.addOption("c", true, "config file");
+		CommandLineParser parser = new BasicParser();
+		CommandLine cmd;
 		try {
-			server.start();
-		} catch (IOException ioe) {
-			System.err.println("Couldn't start server:\n" + ioe);
+			cmd = parser.parse(options, args);
+			String configFile = cmd.getOptionValue("c");
+			if (configFile == null) {
+				System.err.println("The config file option was not provided");
+				// automatically generate the help statement
+				HelpFormatter formatter = new HelpFormatter();
+				formatter.printHelp("c", options);
+				System.exit(-1);
+			}
+			else {
+				try {
+					HubConfig hubConfig = ConfigurationFileParser.parseConfigurationFile(configFile);
+					File libdir = new File(hubConfig.getLibdir());
+					File dashboard = new File(hubConfig.getDashboard());
+					final IotHubHTTPD server = new IotHubHTTPD(hubConfig.getPort(), libdir, dashboard);
+					ListHttpRequestHandler handler = new ListHttpRequestHandler();
+					handler.addHttpRequestHandler(new AdminHttpRequestHandler(hubConfig.getLibdir()), 0); //Max priority for the admin page
+					handler.addHttpRequestHandler(new BasicIotHubApiRequestHandler(libdir), 1);
+					server.setHttpRequestHandler(handler);
+					init(hubConfig);
+					try {
+						server.start();
+					} catch (IOException ioe) {
+						System.err.println("Couldn't start server:\n" + ioe);
+						System.exit(-1);
+					}
+					Runtime.getRuntime().addShutdownHook(new Thread()
+					{
+						@Override
+						public void run()
+						{
+							server.stop();
+							System.out.println("Server stopped");
+						}
+					});
+
+					while (true)
+					{
+						Thread.sleep(1000);
+					}
+				} catch (ConfigurationParsingException | IOException e){
+					System.err.println(e.getMessage());
+					System.exit(-1);
+				} 
+			}
+
+		} catch (ParseException e) {
+			System.err.println(e.getMessage());
 			System.exit(-1);
-		}
-		
-		Runtime.getRuntime().addShutdownHook(new Thread()
-        {
-            @Override
-            public void run()
-            {
-                System.out.println("Shutdown hook ran!");
-                server.stop();
-            }
-        });
-		
-		while (true)
-        {
-            Thread.sleep(1000);
-        }
+		}		
 	}
-	
+
 }

@@ -1,5 +1,6 @@
 package fi.helsinki.cs.iot.kahvihub;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -15,10 +16,12 @@ import java.util.Map;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.database.IotHubDataHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDatabase;
 import fi.helsinki.cs.iot.hub.database.IotHubDatabaseException;
+import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
+import fi.helsinki.cs.iot.hub.model.enabler.Feature;
+import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
 import fi.helsinki.cs.iot.hub.model.feed.AtomicFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ComposedFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ExecutableFeed;
@@ -29,6 +32,7 @@ import fi.helsinki.cs.iot.hub.model.feed.FeedEntry;
 import fi.helsinki.cs.iot.hub.model.feed.Field;
 import fi.helsinki.cs.iot.hub.model.feed.FieldDescription;
 import fi.helsinki.cs.iot.hub.model.utils.FeatureUtils;
+import fi.helsinki.cs.iot.hub.utils.Log;
 
 public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 
@@ -127,136 +131,6 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 	}
 
 	/*
-	private long getKeywordId(String keyword, boolean doInsert) {
-		try {
-			String sql = "select " + IotHubDataHandler.KEY_KEYWORD_ID + 
-					" from " + IotHubDataHandler.TABLE_KEYWORD + 
-					" where " + IotHubDataHandler.KEY_KEYWORD_VALUE + " = ?";
-			PreparedStatement ps = connection.prepareStatement(sql);
-			ps.setString(1, keyword);
-			ResultSet rs = ps.executeQuery();
-			if (rs.next()) {
-				rs.close();
-				ps.close();
-				return rs.getLong(IotHubDataHandler.KEY_KEYWORD_ID);
-			}
-			else if (doInsert) {
-				connection.setAutoCommit(false);
-				sql = "insert into " + IotHubDataHandler.TABLE_KEYWORD +
-						"(" + IotHubDataHandler.KEY_KEYWORD_VALUE + ") values (?)";
-				PreparedStatement ps2 = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-				ps2.setString(1, keyword);
-				int nRow = ps2.executeUpdate();
-				ResultSet genKeysFeed = ps2.getGeneratedKeys();
-				connection.commit();
-				genKeysFeed.close();
-				ps2.close();
-				ps.close();
-				if (nRow > 1 && genKeysFeed.next()) {
-					return genKeysFeed.getLong(1);
-				}
-				else {
-					return -1;
-				}
-			}
-		} catch (SQLException e) {
-			e.printStackTrace();
-			return -1;
-		}
-		return -1;
-	}
-
-	private PluginInfo getPluginInfo(long id) {
-		PluginInfo pluginInfo = null;
-		try {
-			checkOpenness();
-			String sql = "select * from " + IotHubDataHandler.TABLE_PLUGIN_INFO +
-					" where " + IotHubDataHandler.KEY_PLUGIN_INFO_ID + " = ?";
-			PreparedStatement ps = connection.prepareStatement(sql);
-			ps.setLong(1, id);
-			ResultSet rs = ps.executeQuery();
-			if (rs.next()) {
-				String serviceName = rs.getString(IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME);
-				String packageName = rs.getString(IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME);
-				pluginInfo = new PluginInfo(id, serviceName, packageName);
-			}
-			rs.close();
-			ps.close();
-			return pluginInfo;
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
-
-	private PluginInfo addPluginInfo(String serviceName, String packageName) {
-		PluginInfo pluginInfo = null;
-		try {
-			checkOpenness();
-			connection.setAutoCommit(false);
-			String sql = "insert into " + IotHubDataHandler.TABLE_PLUGIN_INFO + 
-					"(" + IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME +
-					"," + IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME + ") values (?, ?)";
-			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-			ps.setString(1, serviceName);
-			ps.setString(2, packageName);
-			int nRow = ps.executeUpdate();
-			ResultSet genKeys = ps.getGeneratedKeys();
-			if (nRow > 1 && genKeys.next()) {
-				long insertId = genKeys.getLong(1);
-				pluginInfo = getPluginInfo(insertId);
-			}
-			genKeys.close();
-			ps.close();
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			return null;
-		}
-		return pluginInfo;
-	}
-
-	private void deletePluginInfo(PluginInfo pluginInfo) {
-		long id = pluginInfo.getId();
-		try {
-			checkOpenness();
-			connection.setAutoCommit(false);
-			String sql = "delete from " + IotHubDataHandler.TABLE_PLUGIN_INFO + 
-					" where " + IotHubDataHandler.KEY_PLUGIN_INFO_ID + " = ?";
-			PreparedStatement ps = connection.prepareStatement(sql);
-			ps.setLong(1, id);
-			ps.execute();
-			connection.commit();
-			Log.i(TAG, "Plugin info deleted with id: " + id);
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			Log.e(TAG, "Plugin delete failed for id: " + id);
-		}	
-
-	}
-
-	private List<PluginInfo> getListPluginInfo(String serviceName, String packageName) {
-		List<PluginInfo> pluginInfoList = new ArrayList<>();
-		try {
-			checkOpenness();
-			String sql = "select * from " + IotHubDataHandler.TABLE_PLUGIN_INFO + 
-					" where " + IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME + 
-					" = ? and " + IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME + " = ?";
-			PreparedStatement ps = connection.prepareStatement(sql);
-			ps.setString(1, serviceName);
-			ps.setString(2, packageName);
-			ResultSet rs = ps.executeQuery();
-			if (rs.next()) {
-				long id = rs.getLong(IotHubDataHandler.KEY_PLUGIN_INFO_ID);
-				pluginInfoList.add(new PluginInfo(id, serviceName, packageName));
-			}
-			rs.close();
-			ps.close();
-			return pluginInfoList;
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
 
 	private Feature getFeature(long id) {
 		Feature feature = null;
@@ -579,43 +453,76 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 	}
 	 */
 
+	@Override
+	public AtomicFeed addAtomicFeed(String name, String metadata, 
+			List<String> keywords, Feature feature) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Enabler addEnabler(String name, String metadata, String serviceName, String packageName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	private AtomicFeed getAtomicFeed(long id) {
 		AtomicFeed atomicFeed = null;
-		//		try {
-		//			checkOpenness();
-		//			String sql = "select * from " + IotHubDataHandler.TABLE_ATOMIC_FEED +
-		//					" where " + IotHubDataHandler.KEY_ATOMIC_FEED_ID + " = ?";
-		//			PreparedStatement ps = connection.prepareStatement(sql);
-		//			ps.setLong(1, id);
-		//			ResultSet rs = ps.executeQuery();
-		//			if (rs.next()) {
-		//				long feedId = rs.getLong(IotHubDataHandler.KEY_ATOMIC_FEED_ID);
-		//				long featureId = rs.getLong(IotHubDataHandler.KEY_ATOMIC_FEATURE_ID);
-		//				String sql2 = "select * from " + IotHubDataHandler.TABLE_FEED +
-		//						" where " + IotHubDataHandler.KEY_FEED_ID + " = ?";
-		//				PreparedStatement ps2 = connection.prepareStatement(sql2);
-		//				ps2.setLong(1, feedId);
-		//				ResultSet rs2 = ps2.executeQuery();
-		//				if (rs2.next()) {
-		//					String name = rs2.getString(IotHubDataHandler.KEY_FEED_NAME);
-		//					String metadata = rs2.getString(IotHubDataHandler.KEY_FEED_METADATA);
-		//					List<String> keywords = getFeedKeywords(feedId);
-		//					Feature feature = getFeature(featureId);
-		//					if (feature == null) {
-		//			            Log.e(TAG, "The feature for the atomic feed is not existing");
-		//			        }
-		//					else {
-		//						atomicFeed = new AtomicFeed(feedId, name, metadata, keywords, feature);
-		//					}
-		//				}
-		//				ps2.close();
-		//			}
-		//			ps.close();
-		//			return atomicFeed;
-		//		} catch (SQLException | IotHubDatabaseException e) {
-		//			e.printStackTrace();
-		//			return null;
-		//		}
+		try {
+			checkOpenness();
+			//			String feedIdFeed = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_ID;
+			//			String fieldIdFeed = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_FEED_ID;
+			//			String attr1 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_NAME;
+			//			String attr2 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_METADATA;
+			//			String attrType = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_TYPE;
+			//			String attr3 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_STORAGE;
+			//			String attr4 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_READABLE;
+			//			String attr5 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_WRITABLE;
+			//			String attr6 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_ID;
+			//			String attr7 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_NAME;
+			//			String attr8 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_METADATA;
+			//			String attr9 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_TYPE;
+			//			String attr10 = IotHubDataHandler.TABLE_FIELD + "." + IotHubDataHandler.KEY_FIELD_OPTIONAL;
+			//			String sql = "SELECT " + attr1 + ", " + attr2 + ", " + attr3 + ", " + attr4 + ", " +
+			//					attr5 + ", " + attr6 + ", " + attr7 + ", " + attr8 + ", " + attr9 + ", " + attr10 +
+			//					" FROM " + IotHubDataHandler.TABLE_FEED + 
+			//					" INNER JOIN " + IotHubDataHandler.TABLE_FIELD + " ON " +
+			//					feedIdFeed + " = " + fieldIdFeed + 
+			//					" WHERE " + feedIdFeed + " = ?" +
+			//					" AND " + attrType + " = '" + IotHubDataHandler.COMPOSED_FEED + "'";
+			//			PreparedStatement ps = connection.prepareStatement(sql);
+			//			ps.setLong(1, id);
+			//			ResultSet rs = ps.executeQuery();
+			//			if (rs.next()) {
+			//				String feedName = rs.getString(1);
+			//				String feedMetadata = rs.getString(2);
+			//				boolean feedStorage = rs.getInt(3) != 0;
+			//				boolean feedReadable = rs.getInt(4) != 0;
+			//				boolean feedWritable = rs.getInt(5) != 0;
+			//				Map<String, Field> fieldList = new HashMap<>();
+			//				do {
+			//					long fieldId = rs.getLong(6);
+			//					String fieldName = rs.getString(7);
+			//					String fieldMetadata = rs.getString(8);
+			//					FeatureType fieldType = FeatureUtils.stringToFeatureType(rs.getString(9));
+			//					boolean fieldOptional = rs.getInt(10) != 0;
+			//					List<String> keywords = getFieldKeywords(fieldId);
+			//					Field field = new Field(fieldId, fieldName, fieldType, fieldMetadata, fieldOptional, keywords);
+			//					fieldList.put(fieldName, field);
+			//				} while (rs.next());
+			//				List<String> keywords = getFeedKeywords(id);
+			//				composedFeed = new ComposedFeed(id, feedName, feedMetadata, keywords, feedStorage, feedReadable, feedWritable, fieldList);
+			//			}
+			//			else {
+			//				Log.e(TAG, "No results for this request: " + ps.toString());
+			//			}
+			//			rs.close();
+			//			ps.close();
+			//			return composedFeed;
+		} catch (IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
 		return atomicFeed;
 	}
 
@@ -623,16 +530,18 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		List<AtomicFeed> atomicFeedList = new ArrayList<AtomicFeed>();
 		try {
 			checkOpenness();
-			//			String sql = "select * from " + IotHubDataHandler.TABLE_ATOMIC_FEED;
-			//			Statement statement = connection.createStatement();
-			//			ResultSet rs = statement.executeQuery(sql);
-			//			if (rs.next()) {
-			//				long feedId = rs.getLong(IotHubDataHandler.KEY_ATOMIC_FEED_ID);
-			//				atomicFeedList.add(getAtomicFeed(feedId));
-			//			}
-			//			statement.close();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEED +
+					" WHERE " + IotHubDataHandler.KEY_FEED_TYPE + " = '" + IotHubDataHandler.ATOMIC_FEED + "'";
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(sql);
+			if (rs.next()) {
+				long feedId = rs.getLong(IotHubDataHandler.KEY_FEED_ID);
+				atomicFeedList.add(getAtomicFeed(feedId));
+			}
+			rs.close();
+			statement.close();
 			return atomicFeedList;
-		} catch (IotHubDatabaseException e) {
+		} catch (SQLException | IotHubDatabaseException e) {
 			e.printStackTrace();
 			return null;
 		}
@@ -861,7 +770,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			return null;
 		}
 	}
-	
+
 	@Override
 	public ExecutableFeed addExecutableFeed(String name, String metadata,
 			boolean readable, boolean writable, List<String> keywords,
@@ -943,7 +852,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		// TODO Auto-generated method stub
 		// Add a table to store the informations about executable feeds
 	}
-	
+
 	private List<ExecutableFeed> getExecutableFeeds () {
 		List<ExecutableFeed> executableFeedList = new ArrayList<>();
 		try {
@@ -1250,7 +1159,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					}
 				} catch (JSONException e) {
 					Log.e(TAG, "Could not retrieve the data from this entry");
-					
+
 				}
 			}
 			rs.close();
@@ -1318,4 +1227,237 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		}
 		return entry;
 	}
+
+	// Related to plugins
+	@Override
+	public PluginInfo addJavascriptPlugin(String serviceName, String packageName, File file) {
+		PluginInfo pluginInfo = null;
+		if (serviceName == null) {
+			Log.e(TAG, "One cannot create a plugin where service name is null");
+			return null;
+		}
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			//First things first, insert the feed's values to the feed table
+			String sqlPluginInsert = "INSERT INTO " + IotHubDataHandler.TABLE_PLUGIN_INFO + "("
+					+ IotHubDataHandler.KEY_PLUGIN_INFO_TYPE + "," 
+					+ IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME + ","
+					+ IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME + ","
+					+ IotHubDataHandler.KEY_PLUGIN_INFO_FILENAME + ") VALUES (?,?,?,?)";
+			PreparedStatement psPluginInsert = connection.prepareStatement(sqlPluginInsert, Statement.RETURN_GENERATED_KEYS);
+			psPluginInsert.setString(1, IotHubDataHandler.JAVASCRIPT_PLUGIN);
+			psPluginInsert.setString(2, serviceName);
+			psPluginInsert.setString(3, packageName);
+			psPluginInsert.setString(4, file == null ? null : file.getName());
+			psPluginInsert.executeUpdate();
+			ResultSet genKeysPlugin = psPluginInsert.getGeneratedKeys();
+			if (genKeysPlugin.next()) {
+				long insertIdPlugin = genKeysPlugin.getLong(1);
+				//At point we should have everything set so it is time to retrieve the plugin from the database
+				Log.d(TAG, "Now i will try to collect the plugin that was just added to the db");
+				pluginInfo = getPluginInfo(insertIdPlugin);
+				if (pluginInfo == null) {
+					Log.e(TAG, "The plugin should not be null");
+				}
+				//Now I want to make some checks
+				if (!pluginInfo.isJavascript()) {
+					Log.e(TAG, "The plugin " + pluginInfo.getId() + " is not javascript");
+					pluginInfo = null;
+				}
+			}
+			else {
+				Log.e(TAG, "The insert of javascript plugin " + serviceName + " did not work");
+			}
+			genKeysPlugin.close();
+			psPluginInsert.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			pluginInfo = null;
+		}
+		try {
+			if (pluginInfo == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return pluginInfo;
+	}
+
+	@Override
+	public PluginInfo addNativePlugin(String serviceName, String packageName, File file) {
+		PluginInfo pluginInfo = null;
+		if (serviceName == null || packageName == null) {
+			Log.e(TAG, "One cannot create a plugin where service name is null");
+			return null;
+		}
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			//First things first, insert the feed's values to the feed table
+			String sqlPluginInsert = "INSERT INTO " + IotHubDataHandler.TABLE_PLUGIN_INFO + "("
+					+ IotHubDataHandler.KEY_PLUGIN_INFO_TYPE + "," 
+					+ IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME + ","
+					+ IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME + ","
+					+ IotHubDataHandler.KEY_PLUGIN_INFO_FILENAME + ") VALUES (?,?,?,?)";
+			PreparedStatement psPluginInsert = connection.prepareStatement(sqlPluginInsert, Statement.RETURN_GENERATED_KEYS);
+			psPluginInsert.setString(1, IotHubDataHandler.NATIVE_PLUGIN);
+			psPluginInsert.setString(2, serviceName);
+			psPluginInsert.setString(3, packageName);
+			psPluginInsert.setString(4, file == null ? null : file.getName());
+			psPluginInsert.executeUpdate();
+			ResultSet genKeysPlugin = psPluginInsert.getGeneratedKeys();
+			if (genKeysPlugin.next()) {
+				long insertIdPlugin = genKeysPlugin.getLong(1);
+				//At point we should have everything set so it is time to retrieve the plugin from the database
+				Log.d(TAG, "Now i will try to collect the plugin that was just added to the db");
+				pluginInfo = getPluginInfo(insertIdPlugin);
+				if (pluginInfo == null) {
+					Log.e(TAG, "The plugin should not be null");
+				}
+				//Now I want to make some checks
+				if (!pluginInfo.isNative()) {
+					Log.e(TAG, "The plugin " + pluginInfo.getId() + " is not native");
+					pluginInfo = null;
+				}
+			}
+			else {
+				Log.e(TAG, "The insert of native plugin " + serviceName + " did not work");
+			}
+			genKeysPlugin.close();
+			psPluginInsert.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			pluginInfo = null;
+		}
+		try {
+			if (pluginInfo == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return pluginInfo;
+	}
+
+	@Override
+	public List<PluginInfo> getJavascriptPlugins() {
+		List<PluginInfo> pluginInfos = new ArrayList<PluginInfo>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_PLUGIN_INFO +
+					" WHERE " + IotHubDataHandler.KEY_PLUGIN_INFO_TYPE + " = '" + IotHubDataHandler.JAVASCRIPT_PLUGIN + "'";
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(sql);
+			if (rs.next()) {
+				long pluginId = rs.getLong(IotHubDataHandler.KEY_PLUGIN_INFO_ID);
+				pluginInfos.add(getPluginInfo(pluginId));
+			}
+			rs.close();
+			statement.close();
+			return pluginInfos;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	@Override
+	public List<PluginInfo> getNativePlugins() {
+		List<PluginInfo> pluginInfos = new ArrayList<PluginInfo>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_PLUGIN_INFO +
+					" WHERE " + IotHubDataHandler.KEY_PLUGIN_INFO_TYPE + " = '" + IotHubDataHandler.NATIVE_PLUGIN + "'";
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(sql);
+			if (rs.next()) {
+				long pluginId = rs.getLong(IotHubDataHandler.KEY_PLUGIN_INFO_ID);
+				pluginInfos.add(getPluginInfo(pluginId));
+			}
+			rs.close();
+			statement.close();
+			return pluginInfos;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	@Override
+	public List<PluginInfo> getPlugins() {
+		List<PluginInfo> list = getJavascriptPlugins();
+		if (list != null) {
+			list.addAll(getNativePlugins());
+			return list;
+		}
+		else {
+			return getNativePlugins();
+		}
+	}
+
+	@Override
+	public PluginInfo getPluginInfo(long pluginId) {
+		PluginInfo pluginInfo = null;
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_PLUGIN_INFO +
+					" WHERE " + IotHubDataHandler.KEY_PLUGIN_INFO_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, pluginId);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_PLUGIN_INFO_ID);
+				String type = rs.getString(IotHubDataHandler.KEY_PLUGIN_INFO_TYPE);
+				String packageName = rs.getString(IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME);
+				String serviceName = rs.getString(IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME);
+				String filename = rs.getString(IotHubDataHandler.KEY_PLUGIN_INFO_FILENAME);
+				if (IotHubDataHandler.NATIVE_PLUGIN.equals(type)) {
+					pluginInfo = new PluginInfo(id, PluginInfo.Type.NATIVE, serviceName, packageName, filename);
+				}
+				else if (IotHubDataHandler.JAVASCRIPT_PLUGIN.equals(type)) {
+					pluginInfo = new PluginInfo(id, PluginInfo.Type.JAVASCRIPT, serviceName, packageName, filename);
+				}
+				else {
+					Log.e(TAG, "Uknown type of plugin '" + type + "', must be (" + 
+							IotHubDataHandler.NATIVE_PLUGIN + ", " + 
+							IotHubDataHandler.JAVASCRIPT_PLUGIN + ")");
+				}
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}	
+		return pluginInfo;
+	}
+
+	/*
+	 * TODO List of stuff still to implement
+	 private void deletePluginInfo(PluginInfo pluginInfo) {
+		long id = pluginInfo.getId();
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			String sql = "delete from " + IotHubDataHandler.TABLE_PLUGIN_INFO + 
+					" where " + IotHubDataHandler.KEY_PLUGIN_INFO_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ps.execute();
+			connection.commit();
+			Log.i(TAG, "Plugin info deleted with id: " + id);
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			Log.e(TAG, "Plugin delete failed for id: " + id);
+		}	
+
+	}
+	 */
+
 }
