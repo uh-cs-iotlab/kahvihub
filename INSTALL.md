@@ -22,6 +22,16 @@ gradle install (This will install the library to your local Maven repository)
 cd ..
 ```
 
+Building the kahvihub-native-plugin library
+---------------------
+```
+git clone https://github.com/uh-cs-iotlab/kahvihub-native-plugin.git
+cd kahvihub-native-plugin
+gradle install
+cd ..
+```
+
+
 Building the Kahvihub
 ---------------------
 ```
