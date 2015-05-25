@@ -17,6 +17,7 @@ import java.util.jar.JarFile;
 import fi.helsinki.cs.iot.hub.api.HttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.database.IotHubDataHandler;
+import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
@@ -31,12 +32,15 @@ import fi.helsinki.cs.iot.kahvihub.plugin.IPlugin;
  */
 public class AdminHttpRequestHandler extends HttpRequestHandler {
 	
-	private static final String filter = "/admin/";
 	private static final String PLUGIN_SERVICE_NAME = "serviceName";
 	private static final String PLUGIN_PACKAGE_NAME = "packageName";
 	private static final String PLUGIN_TYPE = "type";
 	private static final String PLUGIN_FILE= "file";
 	private static final String TAG = "AdminHttpRequestHandler";
+	
+	private static final String filter = "/admin/";
+	private static final String pluginUrlFilter = "/admin/plugins";
+	private static final String enablerUrlFilter = "/admin/enablers";
 	
 	private String pluginFolder;
 	
@@ -255,6 +259,51 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		}
 	}
 	
+	private String getHtmlListOfEnablers() {
+		List<Enabler> enablers = IotHubDataAccess.getInstance().getEnablers();
+		if (enablers == null || enablers.isEmpty()) {
+			return "<p>No enabler has been found</p>";
+		}
+		String html = "<ul>";
+		for (Enabler enabler : enablers) {
+			String enablerHtml = "<b>" + enabler.getName() + "</b>: ";
+			enablerHtml += enabler.getPlugin().getPackageName() + " - " + enabler.getPlugin().getServiceName();
+			enablerHtml += "<a href=''>Install an enabler for this plugin</a>";
+			html += "<li>" + enablerHtml + "</li>";
+		}
+		html += "</ul>";
+		return html;
+	}
+	
+	private Response handleEnablerRequest(Method method, String uri,
+			Map<String, String> parameters, String mimeType, Map<String, String> files) {
+		
+		String html = "<html>";
+		html += "<head><title>Configure an enabler </title></head>";
+		html += "<body>";
+		
+		html += "<form method=\"POST\" enctype=\"multipart/form-data\">";
+		html += "Fields with a (*) are mandatory<br/>";
+		html += "<label for=\"" + PLUGIN_SERVICE_NAME + "\">Service name (*):</label>";
+		html += "<input type='text' name='" + PLUGIN_SERVICE_NAME +"' size='50' placeholder='Service name' />";
+		html += "<label for=\"" + PLUGIN_PACKAGE_NAME + "\">Package name (*):</label>";
+		html += "<input type='text' name='" + PLUGIN_PACKAGE_NAME + "' size='50' placeholder='key' />";
+		html += "<label for=\"" + PLUGIN_TYPE + "\">Package type (*):</label>";
+		html += "<select name='" + PLUGIN_TYPE+ "'>";
+		html += "<option value='" + IotHubDataHandler.NATIVE_PLUGIN + "'>Native</option>";
+		html += "<option value='" + IotHubDataHandler.JAVASCRIPT_PLUGIN + "'>Javascript</option>";	
+		html += "</select>";
+		html += "Please specify a file:<br/>";
+		html += "<input type='file' name='" + PLUGIN_FILE +"' size='40' />";
+		html += "<input type=\"submit\" value=\"Submit\">";
+		html += "</form>";
+		html += "<div><h1>List of already installed plugin</h1>";
+		html += getHtmlListOfPlugins();
+		html += "</div>";
+		html += "</body></html>";
+		return getHtmlResponse(html);
+	}
+	
 
 	/* (non-Javadoc)
 	 * @see fi.helsinki.cs.iot.hub.api.HttpRequestHandler#handleRequest(
@@ -266,8 +315,11 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		if (!acceptRequest(method, uri)) {
 			return null;
 		}
-		if (uri.startsWith("/admin/plugins")) {
+		if (uri.startsWith(pluginUrlFilter)) {
 			return handlePluginRequest(method, uri, parameters, mimeType, files);
+		}
+		else if (uri.startsWith(enablerUrlFilter)) {
+			return handleEnablerRequest(method, uri, parameters, mimeType, files);
 		}
 		else {
 			return new NanoHTTPD.Response(Status.NOT_FOUND, "text/plain; charset=utf-8", "404 - Page not found");

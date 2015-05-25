@@ -460,12 +460,6 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		return null;
 	}
 
-	@Override
-	public Enabler addEnabler(String name, String metadata, String serviceName, String packageName) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	private AtomicFeed getAtomicFeed(long id) {
 		AtomicFeed atomicFeed = null;
 		try {
@@ -1436,6 +1430,36 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			return null;
 		}	
 		return pluginInfo;
+	}
+
+	@Override
+	public Enabler addEnabler(String name, String metadata, PluginInfo plugin, String pluginInfoConfig) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Enabler deleteEnabler(Enabler enabler) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Enabler getEnabler(long id) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<Enabler> getEnablers() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Enabler updateEnabler(Enabler enabler, String name, String metadata, String pluginInfoConfig) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	/*
