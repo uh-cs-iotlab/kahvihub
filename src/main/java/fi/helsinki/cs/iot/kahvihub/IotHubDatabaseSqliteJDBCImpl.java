@@ -26,12 +26,10 @@ import fi.helsinki.cs.iot.hub.model.feed.AtomicFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ComposedFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ExecutableFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ExecutableFeedDescription;
-import fi.helsinki.cs.iot.hub.model.feed.FeatureType;
 import fi.helsinki.cs.iot.hub.model.feed.Feed;
 import fi.helsinki.cs.iot.hub.model.feed.FeedEntry;
 import fi.helsinki.cs.iot.hub.model.feed.Field;
 import fi.helsinki.cs.iot.hub.model.feed.FieldDescription;
-import fi.helsinki.cs.iot.hub.model.utils.FeatureUtils;
 import fi.helsinki.cs.iot.hub.utils.Log;
 
 public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
@@ -424,7 +422,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			psInsert.setLong(1, id);
 			psInsert.setString(2, fd.getName());
 			psInsert.setString(3, fd.getMetadata());
-			psInsert.setString(4, FeatureUtils.featureTypeToString(fd.getType()));
+			psInsert.setString(4, fd.getType());
 			psInsert.setInt(5, fd.isOptional() ? 1 : 0);
 			psInsert.executeUpdate();
 			ResultSet genKeysFeed = psInsert.getGeneratedKeys();
@@ -551,7 +549,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					long fieldId = rs.getLong(6);
 					String fieldName = rs.getString(7);
 					String fieldMetadata = rs.getString(8);
-					FeatureType fieldType = FeatureUtils.stringToFeatureType(rs.getString(9));
+					String fieldType = rs.getString(9);
 					boolean fieldOptional = rs.getInt(10) != 0;
 					List<String> keywords = getFieldKeywords(fieldId);
 					Field field = new Field(fieldId, fieldName, fieldType, fieldMetadata, fieldOptional, keywords);
@@ -1417,7 +1415,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				String name = rs.getString(IotHubDataHandler.KEY_FEATURE_NAME);
 				String type = rs.getString(IotHubDataHandler.KEY_FEATURE_TYPE);
 				boolean isFeed = rs.getBoolean(IotHubDataHandler.KEY_FEATURE_IS_FEED);
-				Feature feature = new Feature(featureId, enabler, name, FeatureUtils.stringToFeatureType(type));
+				Feature feature = new Feature(featureId, enabler, name, type);
 				feature.setAtomicFeed(isFeed);
 				features.add(feature);
 			}

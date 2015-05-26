@@ -12,13 +12,13 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
-import java.util.jar.JarFile;
 
 import fi.helsinki.cs.iot.hub.api.HttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.database.IotHubDataHandler;
 import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
+import fi.helsinki.cs.iot.hub.model.utils.IotHubDataModel;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
@@ -31,27 +31,27 @@ import fi.helsinki.cs.iot.kahvihub.plugin.IPlugin;
  *
  */
 public class AdminHttpRequestHandler extends HttpRequestHandler {
-	
+
 	private static final String PLUGIN_SERVICE_NAME = "serviceName";
 	private static final String PLUGIN_PACKAGE_NAME = "packageName";
 	private static final String PLUGIN_TYPE = "type";
 	private static final String PLUGIN_FILE= "file";
 	private static final String TAG = "AdminHttpRequestHandler";
-	
+
 	private static final String filter = "/admin/";
 	private static final String pluginUrlFilter = "/admin/plugins";
 	private static final String enablerUrlFilter = "/admin/enablers";
-	
+
 	private String pluginFolder;
-	
-	
+
+
 	private class PluginFormDetails {
-		
+
 		private String serviceName;
 		private String packageName;
 		private String type;
 		private File file;
-		
+
 		private PluginFormDetails(String serviceName, String packageName,
 				String type, File file) {
 			super();
@@ -60,23 +60,23 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			this.type = type;
 			this.file = file;
 		}
-		
+
 		private boolean hasServiceName() {
 			return serviceName != null && serviceName.length() > 0;
 		}
-		
+
 		private boolean hasPackageName() {
 			return packageName != null && packageName.length() > 0;
 		}
-		
+
 		private boolean hasType() {
 			return type != null && type.length() > 0;
 		}
-		
+
 		private boolean hasFile() {
 			return file != null && file.exists() && !file.isDirectory();
 		}
-		
+
 		private boolean isEmpty () {
 			return !hasServiceName() && !hasPackageName() && !hasType() && !hasFile();
 		}
@@ -89,8 +89,8 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		}
 
 	}
-	
-	
+
+
 	public AdminHttpRequestHandler(String pluginFolder) {
 		this.pluginFolder = pluginFolder;
 	}
@@ -102,11 +102,11 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 	public boolean acceptRequest(Method method, String uri) {
 		return uri != null && uri.startsWith(filter);
 	}
-	
+
 	private Response getHtmlResponse(String html) {
 		return new NanoHTTPD.Response(Status.OK, "text/html; charset=utf-8", html);
 	}
-	
+
 	private PluginFormDetails getPluginFormDetails(Map<String, String> parameters, Map<String, String> files) {
 		String serviceName = parameters.get(PLUGIN_SERVICE_NAME);
 		String packageName = parameters.get(PLUGIN_PACKAGE_NAME);
@@ -115,7 +115,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		File file = filename == null ? null : new File(files.get(PLUGIN_FILE));
 		return new PluginFormDetails(serviceName, packageName, type, file);
 	}
-	
+
 	private boolean checkPluginFormDetails(PluginFormDetails pfd) {
 		if (!pfd.hasType()) {
 			return false;
@@ -130,20 +130,27 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			return false;
 		}
 	}
-	
+
 	private boolean checkNativePlugin(PluginFormDetails pfd) {
-		
+
 		try { 
 			String classname = pfd.packageName + "." + pfd.serviceName;
 			URL[] urls = {pfd.file.toURI().toURL()};
 			ClassLoader classLoader = new URLClassLoader(urls);
 			Class<?> pluginClass = Class.forName(classname, true, classLoader); 
- 
-			if(IPlugin.class.isAssignableFrom(pluginClass)){ 
-				//Class<IPlugin> castedClass = (Class<IPlugin>)pluginClass; 
-				//IPlugin plugin = castedClass.newInstance();
-				return true;
 
+			if(IPlugin.class.isAssignableFrom(pluginClass)){ 
+				@SuppressWarnings("unchecked")
+				Class<IPlugin> castedClass = (Class<IPlugin>)pluginClass; 
+				IPlugin plugin = castedClass.newInstance();
+				List<String> dataTypes = plugin.getDataTypes();
+				for (String dataType : dataTypes) {
+					if (!IotHubDataModel.getInstance().checkType(dataType)) {
+						Log.e(TAG, "The data type " + dataType + " for plugin " + plugin.toString() + " is invalid");
+						return false;
+					}
+				}
+				return true;
 			}
 			else {
 				System.err.println("The provided class is not a IPlugin");
@@ -151,17 +158,17 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			}
 		} catch (ClassNotFoundException e1) { 
 			e1.printStackTrace(); 
-//		} catch (InstantiationException e) { 
-//			e.printStackTrace(); 
-//		} catch (IllegalAccessException e) { 
-//			e.printStackTrace(); 
+		} catch (InstantiationException e) { 
+			e.printStackTrace(); 
+		} catch (IllegalAccessException e) { 
+			e.printStackTrace(); 
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return false;
 	}
-	
+
 	private File copyPluginFile(PluginFormDetails pfd) {
 		/* 
 		 * TODO A number of features would need to be added, first it would be nice to have
@@ -190,7 +197,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		}
 		return null;
 	}
-	
+
 	private Response getInstallPlugin() {
 		String html = "<html>";
 		html += "<head><title>Install a new plugin for your Kahvihub</title></head>";
@@ -216,7 +223,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		html += "</body></html>";
 		return getHtmlResponse(html);
 	}
-	
+
 	private String getHtmlListOfPlugins() {
 		List<PluginInfo> plugins = IotHubDataAccess.getInstance().getPlugins();
 		if (plugins == null || plugins.isEmpty()) {
@@ -232,7 +239,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		html += "</ul>";
 		return html;
 	}
-	
+
 	private Response handlePluginRequest(Method method, String uri,
 			Map<String, String> parameters, String mimeType, Map<String, String> files) {
 		PluginFormDetails pfd = getPluginFormDetails(parameters, files);
@@ -254,11 +261,11 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 					return new NanoHTTPD.Response(Status.OK, "text/plain; charset=utf-8", pfd.toString());
 				}
 			}
-			
+
 			return new NanoHTTPD.Response(Status.BAD_REQUEST, "text/plain; charset=utf-8", pfd.toString());
 		}
 	}
-	
+
 	private String getHtmlListOfEnablers() {
 		List<Enabler> enablers = IotHubDataAccess.getInstance().getEnablers();
 		if (enablers == null || enablers.isEmpty()) {
@@ -274,14 +281,14 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		html += "</ul>";
 		return html;
 	}
-	
+
 	private Response handleEnablerRequest(Method method, String uri,
 			Map<String, String> parameters, String mimeType, Map<String, String> files) {
-		
+
 		String html = "<html>";
 		html += "<head><title>Configure an enabler </title></head>";
 		html += "<body>";
-		
+		html += getHtmlListOfEnablers();
 		html += "<form method=\"POST\" enctype=\"multipart/form-data\">";
 		html += "Fields with a (*) are mandatory<br/>";
 		html += "<label for=\"" + PLUGIN_SERVICE_NAME + "\">Service name (*):</label>";
@@ -303,7 +310,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		html += "</body></html>";
 		return getHtmlResponse(html);
 	}
-	
+
 
 	/* (non-Javadoc)
 	 * @see fi.helsinki.cs.iot.hub.api.HttpRequestHandler#handleRequest(
