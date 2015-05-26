@@ -267,139 +267,6 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		}
 	}
 
-
-	private Enabler getEnabler(long id) {
-		Enabler enabler = null;
-		try {
-			checkOpenness();
-			String sql = "select * from " + IotHubDataHandler.TABLE_ENABLER +
-					" where " + IotHubDataHandler.KEY_ENABLER_ID + "= ?";
-			PreparedStatement ps = connection.prepareStatement(sql);
-			ps.setLong(1, id);
-			ResultSet rs = ps.executeQuery();
-			if (rs.next()) {
-				String name = rs.getString(IotHubDataHandler.KEY_ENABLER_NAME);
-				String metadata = rs.getString(IotHubDataHandler.KEY_ENABLER_METADATA);
-				long pluginInfoId = rs.getLong(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO);
-				String pluginInfoConfig = rs.getString(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG);
-				PluginInfo pluginInfo = getPluginInfo(pluginInfoId);
-				if (pluginInfo != null) {
-					enabler = new Enabler(id, name, metadata, pluginInfo, pluginInfoConfig);
-					List<Feature> features = getEnablerFeatures(enabler);
-					if (!features.isEmpty()) {
-						for (Feature feature : features) {
-							enabler.addFeature(feature);
-						}
-					}
-				}
-			}
-			rs.close();
-			ps.close();
-			return enabler;
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
-
-	private List<Enabler> getEnabler() {
-		List<Enabler> enablers = new ArrayList<Enabler>();
-		try {
-			checkOpenness();
-			String sql = "select * from " + IotHubDataHandler.TABLE_ENABLER;
-			Statement ps = connection.createStatement();
-			ResultSet rs = ps.executeQuery(sql);
-			while (rs.next()) {
-				long id = rs.getLong(IotHubDataHandler.KEY_ENABLER_ID);
-				String name = rs.getString(IotHubDataHandler.KEY_ENABLER_NAME);
-				String metadata = rs.getString(IotHubDataHandler.KEY_ENABLER_METADATA);
-				long pluginInfoId = rs.getLong(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO);
-				String pluginInfoConfig = rs.getString(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG);
-				PluginInfo pluginInfo = getPluginInfo(pluginInfoId);
-				if (pluginInfo != null) {
-					Enabler enabler = new Enabler(id, name, metadata, pluginInfo, pluginInfoConfig);
-					List<Feature> features = getEnablerFeatures(enabler);
-					if (!features.isEmpty()) {
-						for (Feature feature : features) {
-							enabler.addFeature(feature);
-						}
-					}
-					enablers.add(enabler);
-				}
-			}
-			rs.close();
-			ps.close();
-			return enablers;
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
-
-	private Enabler addEnabler(String name, String metadata, String serviceName, String packageName) {
-
-		PluginInfo plugin = addPluginInfo(serviceName, packageName);
-		if (plugin == null) {
-			return null;
-		}
-
-		Enabler enabler = null;
-		try {
-			checkOpenness();
-			connection.setAutoCommit(false);
-			String sql = "insert into " + IotHubDataHandler.TABLE_ENABLER +  
-					"(" + IotHubDataHandler.KEY_ENABLER_NAME + "," +
-					IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO + "," +
-					IotHubDataHandler.KEY_ENABLER_METADATA + ") values (?,?,?)";
-			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-			ps.setString(1, name);
-			ps.setLong(2, plugin.getId());
-			ps.setString(3, metadata);
-			int nRow = ps.executeUpdate();
-			ResultSet genKeys = ps.getGeneratedKeys();
-			if (nRow > 1 && genKeys.next()) {
-				long insertId = genKeys.getLong(1);
-				enabler = getEnabler(insertId);
-				if (enabler == null) {
-					Log.d(TAG, "the enabler should not be null");
-				}
-			}
-			genKeys.close();
-			ps.close();
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			Log.w(TAG, "The enabler could not be added to the database");
-			return null;
-		}
-		if (enabler != null) {
-			//TODO I should notify the listeners
-			//notifyEnablerAdded(enabler);
-		}
-		return enabler;
-	}
-
-	private void deleteEnabler(Enabler enabler) {
-		deleteEnabler(enabler.getId());
-		//TODO notifyEnablerRemoved(enabler);
-	}
-
-	private void deleteEnabler(long id) {
-		try {
-			checkOpenness();
-			connection.setAutoCommit(false);
-			String sql = "delete from " + IotHubDataHandler.TABLE_ENABLER +
-					" where " + IotHubDataHandler.KEY_ENABLER_ID + " = ?";
-			PreparedStatement ps = connection.prepareStatement(sql);
-			ps.setLong(1, id);
-			ps.execute();
-			connection.commit();
-			Log.i(TAG, "Enabler deleted with id: " + id);
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			Log.e(TAG, "Enabler delete failed for id: " + id);
-		}	
-	}
-
 	private AtomicFeed addAtomicFeed(String name, String metadata,
 			List<String> keywords, Feature feature) {
 		AtomicFeed feed = null;
@@ -1434,26 +1301,154 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 
 	@Override
 	public Enabler addEnabler(String name, String metadata, PluginInfo plugin, String pluginInfoConfig) {
-		// TODO Auto-generated method stub
-		return null;
+		Enabler enabler = null;
+		if (name == null || plugin == null) {
+			Log.e(TAG, "One cannot create a enabler where name is null or with no plugin");
+			return null;
+		}
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			String sqlEnablerInsert = "INSERT INTO " + IotHubDataHandler.TABLE_ENABLER + "("
+					+ IotHubDataHandler.KEY_ENABLER_NAME + "," 
+					+ IotHubDataHandler.KEY_ENABLER_METADATA + ","
+					+ IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO + ","
+					+ IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG + ") VALUES (?,?,?,?)";
+			PreparedStatement psEnablerInsert = connection.prepareStatement(sqlEnablerInsert, Statement.RETURN_GENERATED_KEYS);
+			psEnablerInsert.setString(1, name);
+			psEnablerInsert.setString(2, metadata);
+			psEnablerInsert.setLong(3, plugin.getId());
+			psEnablerInsert.setString(4, pluginInfoConfig);
+			psEnablerInsert.executeUpdate();
+			ResultSet genKeysEnabler = psEnablerInsert.getGeneratedKeys();
+			if (genKeysEnabler.next()) {
+				long insertIdEnabler= genKeysEnabler.getLong(1);
+				//At point we should have everything set so it is time to retrieve the plugin from the database
+				Log.d(TAG, "Now i will try to collect the enabler that was just added to the db");
+				enabler = getEnabler(insertIdEnabler);
+				if (enabler == null) {
+					Log.e(TAG, "The enabler should not be null");
+				}
+				//TODO maybe check that the plugins are the same
+			}
+			else {
+				Log.e(TAG, "The insert of enabler " + name + " did not work");
+			}
+			genKeysEnabler.close();
+			psEnablerInsert.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			enabler = null;
+		}
+		try {
+			if (enabler == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return enabler;
 	}
 
 	@Override
 	public Enabler deleteEnabler(Enabler enabler) {
-		// TODO Auto-generated method stub
-		return null;
+		try {
+			checkOpenness();
+			final String query = "DELETE FROM " +
+					IotHubDataHandler.TABLE_ENABLER +
+					" WHERE " + IotHubDataHandler.KEY_ENABLER_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, enabler.getId());
+			if (!ps.execute()) {
+				enabler = null;
+			}
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return enabler;
 	}
 
 	@Override
 	public Enabler getEnabler(long id) {
-		// TODO Auto-generated method stub
-		return null;
+		Enabler enabler = null;
+		try {
+			checkOpenness();
+			final String query = "SELECT * FROM " +
+					IotHubDataHandler.TABLE_ENABLER +
+					" WHERE " + IotHubDataHandler.KEY_ENABLER_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				String name = rs.getString(IotHubDataHandler.KEY_ENABLER_NAME);
+				String metadata = rs.getString(IotHubDataHandler.KEY_ENABLER_METADATA);
+				long pluginId = rs.getLong(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO);
+				String pluginConfiguration = rs.getString(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG);
+				enabler = new Enabler(pluginId, name, metadata, getPluginInfo(pluginId), pluginConfiguration);
+				List<Feature> features = getFeaturesForEnabler(enabler);
+				for (Feature feature : features) {
+					enabler.addFeature(feature);
+				}
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return enabler;
+	}
+
+	private List<Feature> getFeaturesForEnabler(Enabler enabler) {
+		List<Feature> features = new ArrayList<Feature>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_FEATURE + 
+					" where " + IotHubDataHandler.KEY_FEATURE_ENABLER_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, enabler.getId());
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long featureId = rs.getLong(IotHubDataHandler.KEY_FEATURE_ID);
+				String name = rs.getString(IotHubDataHandler.KEY_FEATURE_NAME);
+				String type = rs.getString(IotHubDataHandler.KEY_FEATURE_TYPE);
+				boolean isFeed = rs.getBoolean(IotHubDataHandler.KEY_FEATURE_IS_FEED);
+				Feature feature = new Feature(featureId, enabler, name, FeatureUtils.stringToFeatureType(type));
+				feature.setAtomicFeed(isFeed);
+				features.add(feature);
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return features;
 	}
 
 	@Override
 	public List<Enabler> getEnablers() {
-		// TODO Auto-generated method stub
-		return null;
+		List<Enabler> enablers = new ArrayList<Enabler>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_ENABLER;
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(sql);
+			if (rs.next()) {
+				long enablerId = rs.getLong(IotHubDataHandler.KEY_ENABLER_ID);
+				enablers.add(getEnabler(enablerId));
+			}
+			rs.close();
+			statement.close();
+			return enablers;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 	@Override
