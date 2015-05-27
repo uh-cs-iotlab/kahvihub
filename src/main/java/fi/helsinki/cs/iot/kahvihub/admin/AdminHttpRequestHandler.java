@@ -25,6 +25,7 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response.Status;
+import fi.helsinki.cs.iot.kahvihub.plugin.FeatureDescription;
 import fi.helsinki.cs.iot.kahvihub.plugin.IPlugin;
 
 /**
@@ -409,11 +410,19 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		return null;
 	}
 
-	private String getHtmlPluginForm (PluginInfo pluginInfo) {
+	private String getConfigurationHtmlForm (PluginInfo pluginInfo) {
 		if (pluginInfo.isNative()) {
 			IPlugin plugin = getPlugin(pluginInfo);
 			if (plugin != null) {
-				return plugin.getConfigurationHtmlForm();
+				if (plugin.configure(null)) {
+					return "<p>The plugin does not need configuration</p>";
+				}
+				String html = "<p>This enabler does need conf</p>";
+				html += "<form method=\"POST\" enctype=\"multipart/form-data\">";
+				html += plugin.getConfigurationHtmlForm();
+				html += "<input type=\"submit\" value=\"Submit\">";
+				html += "</form>";
+				return html;
 			}
 			else {
 				return null;
@@ -423,6 +432,55 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			return null;
 		}
 	}
+	
+	private String getConfigurationFromForm(Enabler enabler, Map<String, String> parameters, Map<String, String> files) {
+		if (enabler.getPlugin().isNative()) {
+			IPlugin plugin = getPlugin(enabler.getPlugin());
+			if (plugin == null) {
+				Log.e(TAG, "The plugin should not be null");
+				return null;
+			}
+			if (plugin.configure(null)) {
+				Log.d(TAG, "The plugin does not need configuration");
+			}
+			Log.d(TAG, "Now checking if I can get the configuration from the native plugin");
+			return plugin.getConfigurationFromHtmlForm(parameters, files);
+		}
+		else {
+			Log.d(TAG, "Non native plugin not yet supported");
+			return null;
+		}
+	}
+	
+	private void addFeaturesToEnabler(Enabler enabler) {
+		if (enabler.getFeatures() != null && enabler.getFeatures().isEmpty()) {
+			Log.d(TAG, "The enabler has a non-empty list of features, I should do something about it");
+			return;
+		}
+		if (enabler.getPlugin().isNative()) {
+			IPlugin plugin = getPlugin(enabler.getPlugin());
+			if (plugin == null) {
+				Log.e(TAG, "The plugin should not be null");
+				return;
+			}
+			if (plugin.configure(enabler.getPluginConfig())) {
+				for(int i = 0; i < plugin.getNumberOfFeatures(); i++) {
+					FeatureDescription fd = plugin.getFeatureDescription(i);
+					Feature feature = IotHubDataAccess.getInstance().addFeature(enabler, fd.getName(), fd.getType());
+					if (feature == null) {
+						Log.e(TAG, "The feature should not be null");
+						break;
+					}
+				}
+			}
+			else {
+				Log.e(TAG, "The configuration of the plugin did not work");
+			}
+		}
+		else {
+			Log.d(TAG, "Non native plugin not yet supported");
+		}
+	}
 
 	private Response handleSingleEnablerRequest(Method method, String uri,
 			Map<String, String> parameters, String mimeType, Map<String, String> files) {
@@ -430,10 +488,27 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		String enablerIdentier = uri.substring(enablerUrlFilterWithSlash.length(), uri.length());
 		long enablerId = Long.parseLong(enablerIdentier);
 		Enabler enabler = IotHubDataAccess.getInstance().getEnabler(enablerId);
+		String enablerConfig = getConfigurationFromForm(enabler, parameters, files);
+		if (enablerConfig != null) {
+			Log.d(TAG, "Trying to update the configuration of the enabler");
+			Enabler enablerWithConfig = IotHubDataAccess.getInstance().updateEnabler(enabler, 
+					enabler.getName(), enabler.getMetadata(), enablerConfig);
+			if (enablerWithConfig != null) {
+				Log.i(TAG, "The enabler " + enabler.getName() + " is now configured");
+				enabler = enablerWithConfig;
+				addFeaturesToEnabler(enabler);
+				enabler = IotHubDataAccess.getInstance().getEnabler(enabler.getId());
+				if (enabler != null) {
+					Log.d(TAG, "The enabler " + enablerId + " should have its features installed");
+				}
+ 			}
+		}
+		System.out.println("Number of features of the enabler: " + enabler.getFeatures().size());
 		String html = "<html>";
 		html += "<head><title>Configuration of the enabler " + enabler.getName() + "</title></head>";
 		html += "<body>";
 		html += "<h1>Configuration of the enabler " + enabler.getName() + "</h1>";
+		html += getConfigurationHtmlForm(enabler.getPlugin());
 		html += getHtmlListOfFeatures(enabler);
 		html += "</div></body></html>";
 		return getHtmlResponse(html);
@@ -447,24 +522,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			}
 			return html + "</ul>";
 		}
-		else if (enabler.getPluginConfig() == null) {
-			//First we need to get the plugin from the PluginInfo
-			PluginInfo pluginInfo = enabler.getPlugin();
-			if (pluginInfo != null) {
-				if (pluginInfo.isNative()) {
-					IPlugin plugin = getPlugin(pluginInfo);
-					if (plugin.configure(null)) {
-						//if this return true, the plugin does not need configuration
-						return "<p>This enabler does not need conf</p>";
-					}
-					else {
-						//I need to provide the configuration template for this plugin
-						return "<p>This enabler does need conf</p>";
-					}
-				}
-			}
-		}
-		return null;
+		return "<p>No features for this enabler</p>";
 		/*List<Enabler> enablers = IotHubDataAccess.getInstance().getEnablers();
 		if (enablers == null || enablers.isEmpty()) {
 			return "<p>No enabler has been found</p>";
