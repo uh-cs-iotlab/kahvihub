@@ -129,10 +129,84 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 	}
 
 	@Override
-	public AtomicFeed addAtomicFeed(String name, String metadata, 
+	public AtomicFeed addAtomicFeed(String name, String metadata,
+			boolean storage, boolean readable, boolean writable,
 			List<String> keywords, Feature feature) {
+		AtomicFeed feed = null;
+		if (feature == null) {
+			Log.e(TAG, "One cannot create a composed feed with no feature");
+			return null;
+		}
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			//First things first, insert the feed's values to the feed table
+			String sqlFeedInsert = "INSERT INTO " + IotHubDataHandler.TABLE_FEED + "("
+					+ IotHubDataHandler.KEY_FEED_NAME + "," 
+					+ IotHubDataHandler.KEY_FEED_METADATA + ","
+					+ IotHubDataHandler.KEY_FEED_TYPE + ","
+					+ IotHubDataHandler.KEY_FEED_STORAGE + "," 
+					+ IotHubDataHandler.KEY_FEED_READABLE + "," 
+					+ IotHubDataHandler.KEY_FEED_WRITABLE + ") VALUES (?,?,?,?,?,?)";
+			PreparedStatement psFeedInsert = connection.prepareStatement(sqlFeedInsert, Statement.RETURN_GENERATED_KEYS);
+			psFeedInsert.setString(1, name);
+			psFeedInsert.setString(2, metadata);
+			psFeedInsert.setString(3, IotHubDataHandler.ATOMIC_FEED);
+			psFeedInsert.setInt(4, storage ? 1 : 0);
+			psFeedInsert.setInt(5, readable ? 1 : 0);
+			psFeedInsert.setInt(6, writable ? 1 : 0);
+			psFeedInsert.executeUpdate();
+			ResultSet genKeysFeed = psFeedInsert.getGeneratedKeys();
+			if (genKeysFeed.next()) {
+				long insertIdFeed = genKeysFeed.getLong(1);
+				//Now we add the keywords
+				addFeedKeywords(insertIdFeed, keywords);
+				//Now we add the fields
+				addFeedFeatureRelation(insertIdFeed, feature.getId());
+				//At point we should have everything set so it is time to retrieve the atomic feed from the database
+				Log.d(TAG, "Now i will try to collect the atomic feed that was just added to the db");
+				feed = getAtomicFeed(insertIdFeed);
+				if (feed == null) {
+					Log.e(TAG, "The feed should not be null");
+				}
+				//Now I want to make some checks
+				if (!compareAtomicFeeds(feed, name, metadata, 
+						storage, readable, writable, keywords, feature)) {
+					Log.e(TAG, "Retrieving feed " + name + " did not work");
+					feed = null;
+				}
+			}
+			else {
+				Log.e(TAG, "The insert of feed " + name + " did not work");
+			}
+			genKeysFeed.close();
+			psFeedInsert.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			feed = null;
+		}
+		try {
+			if (feed == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return feed;
+	}
+
+	private boolean compareAtomicFeeds(AtomicFeed feed, String name,
+			String metadata, boolean storage, boolean readable,
+			boolean writable, List<String> keywords, Feature feature) {
 		// TODO Auto-generated method stub
-		return null;
+		return true;
+	}
+
+	private void addFeedFeatureRelation(long insertIdFeed, long id) {
+		// TODO Auto-generated method stub
+		
 	}
 
 	private AtomicFeed getAtomicFeed(long id) {

@@ -432,7 +432,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			return null;
 		}
 	}
-	
+
 	private String getConfigurationFromForm(Enabler enabler, Map<String, String> parameters, Map<String, String> files) {
 		if (enabler.getPlugin().isNative()) {
 			IPlugin plugin = getPlugin(enabler.getPlugin());
@@ -451,9 +451,9 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			return null;
 		}
 	}
-	
+
 	private void addFeaturesToEnabler(Enabler enabler) {
-		if (enabler.getFeatures() != null && enabler.getFeatures().isEmpty()) {
+		if (enabler.getFeatures() != null && !enabler.getFeatures().isEmpty()) {
 			Log.d(TAG, "The enabler has a non-empty list of features, I should do something about it");
 			return;
 		}
@@ -482,26 +482,34 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		}
 	}
 
+
+
 	private Response handleSingleEnablerRequest(Method method, String uri,
 			Map<String, String> parameters, String mimeType, Map<String, String> files) {
 		String enablerUrlFilterWithSlash = enablerUrlFilter + "/";
 		String enablerIdentier = uri.substring(enablerUrlFilterWithSlash.length(), uri.length());
 		long enablerId = Long.parseLong(enablerIdentier);
 		Enabler enabler = IotHubDataAccess.getInstance().getEnabler(enablerId);
-		String enablerConfig = getConfigurationFromForm(enabler, parameters, files);
-		if (enablerConfig != null) {
-			Log.d(TAG, "Trying to update the configuration of the enabler");
-			Enabler enablerWithConfig = IotHubDataAccess.getInstance().updateEnabler(enabler, 
-					enabler.getName(), enabler.getMetadata(), enablerConfig);
-			if (enablerWithConfig != null) {
-				Log.i(TAG, "The enabler " + enabler.getName() + " is now configured");
-				enabler = enablerWithConfig;
-				addFeaturesToEnabler(enabler);
-				enabler = IotHubDataAccess.getInstance().getEnabler(enabler.getId());
-				if (enabler != null) {
-					Log.d(TAG, "The enabler " + enablerId + " should have its features installed");
+		if (updateFeatureToFeedStatus(enabler, parameters)) {
+			//Reload
+			enabler = IotHubDataAccess.getInstance().getEnabler(enablerId);
+		}
+		else {
+			String enablerConfig = getConfigurationFromForm(enabler, parameters, files);
+			if (enablerConfig != null) {
+				Log.d(TAG, "Trying to update the configuration of the enabler");
+				Enabler enablerWithConfig = IotHubDataAccess.getInstance().updateEnabler(enabler, 
+						enabler.getName(), enabler.getMetadata(), enablerConfig);
+				if (enablerWithConfig != null) {
+					Log.i(TAG, "The enabler " + enabler.getName() + " is now configured");
+					enabler = enablerWithConfig;
+					addFeaturesToEnabler(enabler);
+					enabler = IotHubDataAccess.getInstance().getEnabler(enabler.getId());
+					if (enabler != null) {
+						Log.d(TAG, "The enabler " + enablerId + " should have its features installed");
+					}
 				}
- 			}
+			}
 		}
 		System.out.println("Number of features of the enabler: " + enabler.getFeatures().size());
 		String html = "<html>";
@@ -509,33 +517,50 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		html += "<body>";
 		html += "<h1>Configuration of the enabler " + enabler.getName() + "</h1>";
 		html += getConfigurationHtmlForm(enabler.getPlugin());
-		html += getHtmlListOfFeatures(enabler);
+		html += getHtmlFormForFeaturesToFeed(enabler);
 		html += "</div></body></html>";
 		return getHtmlResponse(html);
 	}
 
-	private String getHtmlListOfFeatures(Enabler enabler) {
-		if (enabler.getFeatures() != null && !enabler.getFeatures().isEmpty()) {
-			String html = "<ul>";
-			for (Feature feature : enabler.getFeatures()) {
-				html += "<li>" + feature.getName() + "</li>";
+	private boolean updateFeatureToFeedStatus(Enabler enabler, Map<String, String> parameters) {
+		if (enabler == null){
+			Log.e(TAG, "Cannot update features if the enabler is null");
+			return false;
+		}
+		else if (!parameters.containsKey("_type") || !parameters.get("_type").equals("toFeed")) {
+			Log.d(TAG, "This is not a feature to feed request");
+			return false;
+		}
+		Log.i(TAG, "It is time to update the features of the enabler");
+		boolean hasChanged = false;
+		//The form results only forward the things that are checked
+		for (Feature feature : enabler.getFeatures()) {
+			boolean isChecked = parameters.containsKey("feature_" + feature.getId());
+			if (isChecked != feature.isAtomicFeed()) {
+				Log.i(TAG, "The feature has a different state");
+				IotHubDataAccess.getInstance().updateFeature(feature, isChecked);
+				hasChanged = true;
 			}
-			return html + "</ul>";
+		}
+		return hasChanged;
+	}
+
+	private String getHtmlFormForFeaturesToFeed(Enabler enabler) {
+		if (enabler.getFeatures() != null && !enabler.getFeatures().isEmpty()) {
+			String html = "<form method=\"POST\" enctype=\"multipart/form-data\">";
+			html += "<input type='hidden' name='_type' value='toFeed'>";
+			html += "The enabler has " + enabler.getFeatures().size() + " features";
+			for (Feature feature : enabler.getFeatures()) {
+				String value = "feature_" + feature.getId();
+				html += "<input type='checkbox' name='" + value + 
+						"' value='" + feature.getName() + "'" +
+						(feature.isAtomicFeed() ? " checked" : "") + "/> " + 
+						feature.getName() + ": " + feature.getType() + "<br/>";
+			}
+			html += "<input type=\"submit\" value=\"Submit\">";
+			return html + "</form>";
 		}
 		return "<p>No features for this enabler</p>";
-		/*List<Enabler> enablers = IotHubDataAccess.getInstance().getEnablers();
-		if (enablers == null || enablers.isEmpty()) {
-			return "<p>No enabler has been found</p>";
-		}
-		String html = "<ul>";
-		for (Enabler enabler : enablers) {
-			String enablerHtml = "<b>" + enabler.getName() + "</b>: ";
-			enablerHtml += enabler.getPlugin().getPackageName() + " - " + enabler.getPlugin().getServiceName();
-			enablerHtml += "<a href='"+ enablerUrlFilter + "/" + enabler.getId() +"'>Configure this enabler</a>";
-			html += "<li>" + enablerHtml + "</li>";
-		}
-		html += "</ul>";
-		return html;*/
 	}
 
 	private Response handleEnablerRequest(Method method, String uri,
