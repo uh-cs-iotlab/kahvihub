@@ -5,9 +5,6 @@ package fi.helsinki.cs.iot.kahvihub.admin;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
@@ -18,15 +15,16 @@ import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.database.IotHubDataHandler;
 import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
 import fi.helsinki.cs.iot.hub.model.enabler.Feature;
+import fi.helsinki.cs.iot.hub.model.enabler.Plugin;
+import fi.helsinki.cs.iot.hub.model.enabler.PluginException;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
-import fi.helsinki.cs.iot.hub.model.utils.IotHubDataModel;
+import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
+import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response.Status;
-import fi.helsinki.cs.iot.kahvihub.plugin.FeatureDescription;
-import fi.helsinki.cs.iot.kahvihub.plugin.IPlugin;
 
 /**
  * @author mineraud
@@ -153,7 +151,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		return new PluginFormDetails(serviceName, packageName, type, file);
 	}
 
-	private boolean checkPluginFormDetails(PluginFormDetails pfd) {
+	private boolean checkPluginFormDetails(PluginFormDetails pfd) throws PluginException {
 		if (!pfd.hasType()) {
 			return false;
 		}
@@ -161,7 +159,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			return pfd.hasServiceName() && pfd.hasPackageName() && pfd.hasFile() && checkNativePlugin(pfd);
 		}
 		else if (IotHubDataHandler.JAVASCRIPT_PLUGIN.equals(pfd.type)) {
-			return pfd.hasServiceName() && pfd.hasPackageName() && pfd.hasFile();
+			return pfd.hasServiceName() && pfd.hasPackageName() && pfd.hasFile() && checkJavascriptPlugin(pfd);
 		}
 		else {
 			return false;
@@ -189,46 +187,14 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		}
 	}
 
-	private boolean checkNativePlugin(PluginFormDetails pfd) {
-
-		try { 
-			String classname = pfd.packageName + "." + pfd.serviceName;
-			URL[] urls = {pfd.file.toURI().toURL()};
-			ClassLoader classLoader = new URLClassLoader(urls);
-			Class<?> pluginClass = Class.forName(classname, true, classLoader); 
-
-			if(IPlugin.class.isAssignableFrom(pluginClass)){ 
-				@SuppressWarnings("unchecked")
-				Class<IPlugin> castedClass = (Class<IPlugin>)pluginClass; 
-				IPlugin plugin = castedClass.newInstance();
-				List<String> dataTypes = plugin.getDataTypes();
-				for (String dataType : dataTypes) {
-					if (!IotHubDataModel.getInstance().checkType(dataType)) {
-						Log.e(TAG, "The data type " + dataType + " for plugin " + plugin.toString() + " is invalid");
-						return false;
-					}
-				}
-				return true;
-			}
-			else {
-				System.err.println("The provided class is not a IPlugin");
-				return false;
-			}
-		} catch (ClassNotFoundException e1) { 
-			e1.printStackTrace(); 
-		} catch (InstantiationException e) { 
-			e.printStackTrace(); 
-		} catch (IllegalAccessException e) { 
-			e.printStackTrace(); 
-		} catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		catch (AbstractMethodError e) {
-			// This is needed when the plugin is not uptodate
-			e.printStackTrace();
-		}
-		return false;
+	private boolean checkNativePlugin(PluginFormDetails pfd) throws PluginException {
+		PluginManager.getInstance().checkNativePlugin(pfd.serviceName, pfd.packageName, pfd.file);
+		return true;
+	}
+	
+	private boolean checkJavascriptPlugin(PluginFormDetails pfd) throws PluginException  {
+		PluginManager.getInstance().checkJavacriptPlugin(pfd.serviceName, pfd.packageName, pfd.file);
+		return true;
 	}
 
 	private File copyPluginFile(PluginFormDetails pfd) {
@@ -310,7 +276,15 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			return getInstallPlugin();
 		}
 		else {
-			boolean isValid = checkPluginFormDetails(pfd);
+			boolean isValid = false;
+			try {
+				isValid = checkPluginFormDetails(pfd);
+			} catch (PluginException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				Log.e(TAG, "There was something wrong with the plugin");
+				return new NanoHTTPD.Response(Status.BAD_REQUEST, "text/plain; charset=utf-8", pfd.toString());
+			}
 			if (isValid) {
 				File file = copyPluginFile(pfd);
 				if (file != null) {
@@ -363,7 +337,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		String html = "<ul>";
 		for (Enabler enabler : enablers) {
 			String enablerHtml = "<b>" + enabler.getName() + "</b>: ";
-			enablerHtml += enabler.getPlugin().getPackageName() + " - " + enabler.getPlugin().getServiceName();
+			enablerHtml += enabler.getPluginInfo().getPackageName() + " - " + enabler.getPluginInfo().getServiceName();
 			enablerHtml += "<a href='"+ enablerUrlFilter + "/" + enabler.getId() +"'>Configure this enabler</a>";
 			html += "<li>" + enablerHtml + "</li>";
 		}
@@ -371,84 +345,34 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		return html;
 	}
 
-	private IPlugin getPlugin(PluginInfo pluginInfo) {
-		if (pluginInfo == null || !pluginInfo.isNative()) {
-			Log.e(TAG, "The plugin info does not permit to find the corresponding native plugin");
-			return null;
-		}
-		try { 
-			String classname = pluginInfo.getPackageName() + "." + pluginInfo.getServiceName();
-			File pluginFile = new File(pluginFolder + pluginInfo.getFilename());
-			URL[] urls = {pluginFile.toURI().toURL()};
-			ClassLoader classLoader = new URLClassLoader(urls);
-			Class<?> pluginClass = Class.forName(classname, true, classLoader); 
-
-			if(IPlugin.class.isAssignableFrom(pluginClass)){ 
-				@SuppressWarnings("unchecked")
-				Class<IPlugin> castedClass = (Class<IPlugin>)pluginClass; 
-				IPlugin plugin = castedClass.newInstance();
-				return plugin;
-			}
-			else {
-				System.err.println("The provided class is not a IPlugin");
-				return null;
-			}
-		} catch (ClassNotFoundException e1) { 
-			e1.printStackTrace(); 
-		} catch (InstantiationException e) { 
-			e.printStackTrace(); 
-		} catch (IllegalAccessException e) { 
-			e.printStackTrace(); 
-		} catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		catch (AbstractMethodError e) {
-			// This is needed when the plugin is not uptodate
-			e.printStackTrace();
-		}
-		return null;
-	}
-
 	private String getConfigurationHtmlForm (PluginInfo pluginInfo) {
-		if (pluginInfo.isNative()) {
-			IPlugin plugin = getPlugin(pluginInfo);
-			if (plugin != null) {
-				if (plugin.configure(null)) {
-					return "<p>The plugin does not need configuration</p>";
-				}
-				String html = "<p>This enabler does need conf</p>";
-				html += "<form method=\"POST\" enctype=\"multipart/form-data\">";
-				html += plugin.getConfigurationHtmlForm();
-				html += "<input type=\"submit\" value=\"Submit\">";
-				html += "</form>";
-				return html;
-			}
-			else {
-				return null;
-			}
+		Plugin plugin = PluginManager.getInstance().getPlugin(pluginInfo);
+		if (!plugin.needConfiguration()) {
+			return "<p>The plugin does not need configuration</p>";
 		}
 		else {
-			return null;
+			String html = "<p>This enabler does need conf</p>";
+			html += "<form method=\"POST\" enctype=\"multipart/form-data\">";
+			html += plugin.getConfigurationHtmlForm();
+			html += "<input type=\"submit\" value=\"Submit\">";
+			html += "</form>";
+			return html;
 		}
 	}
 
 	private String getConfigurationFromForm(Enabler enabler, Map<String, String> parameters, Map<String, String> files) {
-		if (enabler.getPlugin().isNative()) {
-			IPlugin plugin = getPlugin(enabler.getPlugin());
-			if (plugin == null) {
-				Log.e(TAG, "The plugin should not be null");
-				return null;
-			}
-			if (plugin.configure(null)) {
-				Log.d(TAG, "The plugin does not need configuration");
-			}
-			Log.d(TAG, "Now checking if I can get the configuration from the native plugin");
-			return plugin.getConfigurationFromHtmlForm(parameters, files);
+		Plugin plugin = PluginManager.getInstance().getPlugin(enabler.getPluginInfo());
+		if (plugin == null) {
+			Log.e(TAG, "The plugin should not be null");
+			return null;
+		}
+		if (!plugin.needConfiguration()) {
+			Log.d(TAG, "The plugin does not need configuration");
+			return null;
 		}
 		else {
-			Log.d(TAG, "Non native plugin not yet supported");
-			return null;
+			Log.d(TAG, "Now checking if I can get the configuration from the native plugin");
+			return plugin.getConfigurationFromHtmlForm(parameters, files);
 		}
 	}
 
@@ -457,32 +381,22 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			Log.d(TAG, "The enabler has a non-empty list of features, I should do something about it");
 			return;
 		}
-		if (enabler.getPlugin().isNative()) {
-			IPlugin plugin = getPlugin(enabler.getPlugin());
-			if (plugin == null) {
-				Log.e(TAG, "The plugin should not be null");
-				return;
-			}
-			if (plugin.configure(enabler.getPluginConfig())) {
-				for(int i = 0; i < plugin.getNumberOfFeatures(); i++) {
-					FeatureDescription fd = plugin.getFeatureDescription(i);
-					Feature feature = IotHubDataAccess.getInstance().addFeature(enabler, fd.getName(), fd.getType());
-					if (feature == null) {
-						Log.e(TAG, "The feature should not be null");
-						break;
-					}
+		Plugin plugin = null;
+		try {
+			plugin = PluginManager.getInstance().getConfiguredPlugin(enabler.getPluginInfo(), enabler.getPluginConfig());
+			for(int i = 0; i < plugin.getNumberOfFeatures(); i++) {
+				FeatureDescription fd = plugin.getFeatureDescription(i);
+				Feature feature = IotHubDataAccess.getInstance().addFeature(enabler, fd.getName(), fd.getType());
+				if (feature == null) {
+					Log.e(TAG, "The feature should not be null");
+					break;
 				}
 			}
-			else {
-				Log.e(TAG, "The configuration of the plugin did not work");
-			}
-		}
-		else {
-			Log.d(TAG, "Non native plugin not yet supported");
+		} catch (PluginException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
-
-
 
 	private Response handleSingleEnablerRequest(Method method, String uri,
 			Map<String, String> parameters, String mimeType, Map<String, String> files) {
@@ -498,16 +412,24 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			String enablerConfig = getConfigurationFromForm(enabler, parameters, files);
 			if (enablerConfig != null) {
 				Log.d(TAG, "Trying to update the configuration of the enabler");
-				Enabler enablerWithConfig = IotHubDataAccess.getInstance().updateEnabler(enabler, 
-						enabler.getName(), enabler.getMetadata(), enablerConfig);
-				if (enablerWithConfig != null) {
-					Log.i(TAG, "The enabler " + enabler.getName() + " is now configured");
-					enabler = enablerWithConfig;
-					addFeaturesToEnabler(enabler);
-					enabler = IotHubDataAccess.getInstance().getEnabler(enabler.getId());
-					if (enabler != null) {
-						Log.d(TAG, "The enabler " + enablerId + " should have its features installed");
+				try {
+					Plugin plugin = PluginManager.getInstance().getConfiguredPlugin(enabler.getPluginInfo(), enablerConfig);
+					if (plugin != null) {
+						Enabler enablerWithConfig = IotHubDataAccess.getInstance().updateEnabler(enabler, 
+								enabler.getName(), enabler.getMetadata(), enablerConfig);
+						if (enablerWithConfig != null) {
+							Log.i(TAG, "The enabler " + enabler.getName() + " is now configured");
+							enabler = enablerWithConfig;
+							addFeaturesToEnabler(enabler);
+							enabler = IotHubDataAccess.getInstance().getEnabler(enabler.getId());
+							if (enabler != null) {
+								Log.d(TAG, "The enabler " + enablerId + " should have its features installed");
+							}
+						}
 					}
+				} catch (PluginException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 			}
 		}
@@ -516,7 +438,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 		html += "<head><title>Configuration of the enabler " + enabler.getName() + "</title></head>";
 		html += "<body>";
 		html += "<h1>Configuration of the enabler " + enabler.getName() + "</h1>";
-		html += getConfigurationHtmlForm(enabler.getPlugin());
+		html += getConfigurationHtmlForm(enabler.getPluginInfo());
 		html += getHtmlFormForFeaturesToFeed(enabler);
 		html += "</div></body></html>";
 		return getHtmlResponse(html);
@@ -592,32 +514,6 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 				return new NanoHTTPD.Response(Status.BAD_REQUEST, "text/plain; charset=utf-8", efd.toString());
 			}
 		}
-
-
-		/*if (parameters.containsKey("plugin")) {
-			long pluginId = Long.parseLong(parameters.get("plugin"));
-			PluginInfo plugin = IotHubDataAccess.getInstance().getPluginInfo(pluginId);
-			String html = "<html>";
-			html += "<head><title>Configure an enabler for plugin " + plugin.toString() + "</title></head>";
-			html += "<body>";
-			html += html += "<form method=\"POST\" enctype=\"multipart/form-data\">";
-			html += getHtmlPluginForm(plugin);
-			html += "<input type=\"submit\" value=\"Submit\">";
-			html += "</form>";
-			html += "<div><h1>List of already installed enablers</h1>";
-			html += getHtmlListOfEnablers();
-			html += "</div></body></html>";
-			return getHtmlResponse(html);
-		}
-		else {
-			String html = "<html>";
-			html += "<head><title>List of currently installed enablers</title></head>";
-			html += "<body>";
-			html += "<div><h1>List of already installed enablers</h1>";
-			html += getHtmlListOfEnablers();
-			html += "</div></body></html>";
-			return getHtmlResponse(html);
-		}*/
 	}
 
 

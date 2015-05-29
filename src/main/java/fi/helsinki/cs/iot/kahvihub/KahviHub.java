@@ -30,6 +30,8 @@ import org.apache.commons.cli.ParseException;
 import fi.helsinki.cs.iot.hub.api.BasicIotHubApiRequestHandler;
 import fi.helsinki.cs.iot.hub.api.ListHttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
+import fi.helsinki.cs.iot.hub.model.enabler.NativePluginHelper;
+import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.utils.Logger;
 import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
@@ -72,11 +74,18 @@ public class KahviHub {
 		IotHubDataAccess.setInstance(new IotHubDbHandlerSqliteJDBCImpl(dbfilename, 
 				config.getDbVersion(), config.isDebugMode()));
 	}
+	
+	private static void setNativePluginHelper(HubConfig config) {
+		//TODO maybe in the future, I want to have separate folder for native and js plugins
+		NativePluginHelper nativePluginHelper = new KahvihubNativePluginHelper(config.getLibdir());
+		PluginManager.getInstance().setNativePluginHelper(nativePluginHelper);
+	}
 
 	//TODO init should be reading a config file
 	public static void init(HubConfig config) {
 		setLogger(config);
 		setIotHubDataHandler(config);
+		setNativePluginHelper(config);
 	}
 
 	public static void main(String[] args) throws InterruptedException {

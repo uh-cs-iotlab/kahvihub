@@ -21,7 +21,10 @@ import fi.helsinki.cs.iot.hub.database.IotHubDatabase;
 import fi.helsinki.cs.iot.hub.database.IotHubDatabaseException;
 import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
 import fi.helsinki.cs.iot.hub.model.enabler.Feature;
+import fi.helsinki.cs.iot.hub.model.enabler.Plugin;
+import fi.helsinki.cs.iot.hub.model.enabler.PluginException;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
+import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
 import fi.helsinki.cs.iot.hub.model.feed.AtomicFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ComposedFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ExecutableFeed;
@@ -130,7 +133,6 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 
 	@Override
 	public AtomicFeed addAtomicFeed(String name, String metadata,
-			boolean storage, boolean readable, boolean writable,
 			List<String> keywords, Feature feature) {
 		AtomicFeed feed = null;
 		if (feature == null) {
@@ -152,9 +154,9 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			psFeedInsert.setString(1, name);
 			psFeedInsert.setString(2, metadata);
 			psFeedInsert.setString(3, IotHubDataHandler.ATOMIC_FEED);
-			psFeedInsert.setInt(4, storage ? 1 : 0);
-			psFeedInsert.setInt(5, readable ? 1 : 0);
-			psFeedInsert.setInt(6, writable ? 1 : 0);
+			psFeedInsert.setInt(4, 0);
+			psFeedInsert.setInt(5, 0);
+			psFeedInsert.setInt(6, 0);
 			psFeedInsert.executeUpdate();
 			ResultSet genKeysFeed = psFeedInsert.getGeneratedKeys();
 			if (genKeysFeed.next()) {
@@ -170,8 +172,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					Log.e(TAG, "The feed should not be null");
 				}
 				//Now I want to make some checks
-				if (!compareAtomicFeeds(feed, name, metadata, 
-						storage, readable, writable, keywords, feature)) {
+				if (!compareAtomicFeeds(feed, name, metadata, keywords, feature)) {
 					Log.e(TAG, "Retrieving feed " + name + " did not work");
 					feed = null;
 				}
@@ -197,21 +198,65 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		return feed;
 	}
 
-	private boolean compareAtomicFeeds(AtomicFeed feed, String name,
-			String metadata, boolean storage, boolean readable,
-			boolean writable, List<String> keywords, Feature feature) {
+	private boolean compareAtomicFeeds(AtomicFeed feed, String name, String metadata, 
+			List<String> keywords, Feature feature) {
 		// TODO Auto-generated method stub
 		return true;
 	}
 
-	private void addFeedFeatureRelation(long insertIdFeed, long id) {
-		// TODO Auto-generated method stub
-		
+	private void addFeedFeatureRelation(long feedId, long featureId) throws SQLException {
+		String sqlInsert = "INSERT INTO " + IotHubDataHandler.TABLE_FEED_FEATURE_REL +
+				"(" + IotHubDataHandler.KEY_FEED_FEATURE_REL_FEED_ID + 
+				"," + IotHubDataHandler.KEY_FEED_FEATURE_REL_FEATURE_ID + ") values (?,?)";
+		PreparedStatement psInsert = connection.prepareStatement(sqlInsert);
+		psInsert.setLong(1, feedId);
+		psInsert.setLong(2, featureId);
+		psInsert.executeUpdate();
+		psInsert.close();
 	}
 
 	private AtomicFeed getAtomicFeed(long id) {
-		// TODO Auto-generated method stub
-		return null;
+		AtomicFeed feed = null;
+		try {
+			checkOpenness();
+			String feedIdFeed = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_ID;
+			String relFeedId = IotHubDataHandler.TABLE_FEED_FEATURE_REL + "." + IotHubDataHandler.KEY_FEED_FEATURE_REL_FEED_ID;
+			String relFeaturedId = IotHubDataHandler.TABLE_FEED_FEATURE_REL + "." + IotHubDataHandler.KEY_FEED_FEATURE_REL_FEATURE_ID;
+			String attr1 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_NAME;
+			String attr2 = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_METADATA;
+			String attrType = IotHubDataHandler.TABLE_FEED + "." + IotHubDataHandler.KEY_FEED_TYPE;
+			String sql = "SELECT " + relFeaturedId + ", " + attr1 + ", " + attr2 +
+					" FROM " + IotHubDataHandler.TABLE_FEED + 
+					" INNER JOIN " + IotHubDataHandler.TABLE_FEED_FEATURE_REL + " ON " +
+					feedIdFeed + " = " + relFeedId + 
+					" WHERE " + feedIdFeed + " = ?" +
+					" AND " + attrType + " = '" + IotHubDataHandler.ATOMIC_FEED + "'";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long featureId = rs.getLong(1);
+				Feature feature = getFeature(featureId);
+				if (feature != null) {
+					String feedName = rs.getString(2);
+					String feedMetadata = rs.getString(3);
+					List<String> keywords = getFeedKeywords(id);
+					feed = new AtomicFeed(id, feedName, feedMetadata, keywords, feature);
+				}
+				else {
+					Log.e(TAG, "The feature does not exist");
+				}
+			}
+			else {
+				Log.e(TAG, "No results for this request: " + ps.toString());
+			}
+			rs.close();
+			ps.close();
+			return feed;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 	private List<AtomicFeed> getAtomicFeeds () {
@@ -1246,12 +1291,25 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				boolean isFeed = rs.getBoolean(IotHubDataHandler.KEY_FEATURE_IS_FEED);
 				Feature feature = new Feature(featureId, enabler, name, type);
 				feature.setAtomicFeed(isFeed);
+				Plugin plugin = PluginManager.getInstance().getConfiguredPlugin(enabler.getPluginInfo(), 
+						enabler.getPluginConfig());
+				if (plugin != null) {
+					//It is now time to setup the availability of the atomic feed
+					feature.setSupported(plugin.isSupported(feature));
+					feature.setAvailable(plugin.isAvailable(feature));
+					feature.setReadable(plugin.isReadable(feature));
+					feature.setWritable(plugin.isWritable(feature));
+				}
 				features.add(feature);
 				Log.d(TAG, "Got one feature from the db");
 			}
 			rs.close();
 			ps.close();
 		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		} catch (PluginException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
 		}
