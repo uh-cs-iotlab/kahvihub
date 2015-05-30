@@ -164,6 +164,28 @@ public class KahvihubNativePluginWrapper implements Plugin {
 		}
 	}
 
+	@Override
+	public String getJsonData(FeatureDescription featureDescription) {
+		if (featureDescription != null) {
+			return plugin.getData(
+					new KahvihubNativeFeatureDescription(featureDescription.getName(), featureDescription.getType()));
+		}
+		else {
+			return null;
+		}
+	}
+
+	@Override
+	public boolean postJsonData(FeatureDescription featureDescription, String data) {
+		if (featureDescription != null) {
+			return plugin.postData(
+					new KahvihubNativeFeatureDescription(featureDescription.getName(), featureDescription.getType()), data);
+		}
+		else {
+			return false;
+		}
+	}
+
 	
 
 }
