@@ -165,9 +165,9 @@ public class KahvihubNativePluginWrapper implements Plugin {
 	}
 
 	@Override
-	public String getJsonData(FeatureDescription featureDescription) {
+	public String getValue(FeatureDescription featureDescription) {
 		if (featureDescription != null) {
-			return plugin.getData(
+			return plugin.getValue(
 					new KahvihubNativeFeatureDescription(featureDescription.getName(), featureDescription.getType()));
 		}
 		else {
@@ -176,10 +176,10 @@ public class KahvihubNativePluginWrapper implements Plugin {
 	}
 
 	@Override
-	public boolean postJsonData(FeatureDescription featureDescription, String data) {
+	public boolean postValue(FeatureDescription featureDescription, String value) {
 		if (featureDescription != null) {
-			return plugin.postData(
-					new KahvihubNativeFeatureDescription(featureDescription.getName(), featureDescription.getType()), data);
+			return plugin.postValue(
+					new KahvihubNativeFeatureDescription(featureDescription.getName(), featureDescription.getType()), value);
 		}
 		else {
 			return false;
