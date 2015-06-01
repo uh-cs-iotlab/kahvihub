@@ -21,6 +21,7 @@ import java.util.Map;
 
 import fi.helsinki.cs.iot.hub.model.enabler.Plugin;
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
+import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.kahvihub.plugin.KahvihubNativeFeatureDescription;
 import fi.helsinki.cs.iot.kahvihub.plugin.KahvihubNativePlugin;
 
@@ -127,6 +128,7 @@ public class KahvihubNativePluginWrapper implements Plugin {
 	 */
 	@Override
 	public boolean isReadable(FeatureDescription featureDescription) {
+		Log.d("TEST", "I do this");
 		if (featureDescription != null) {
 			return plugin.isFeatureReadable(
 					new KahvihubNativeFeatureDescription(featureDescription.getName(), featureDescription.getType()));

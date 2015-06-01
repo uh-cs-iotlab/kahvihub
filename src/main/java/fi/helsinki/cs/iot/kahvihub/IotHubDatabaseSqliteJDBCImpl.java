@@ -21,10 +21,7 @@ import fi.helsinki.cs.iot.hub.database.IotHubDatabase;
 import fi.helsinki.cs.iot.hub.database.IotHubDatabaseException;
 import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
 import fi.helsinki.cs.iot.hub.model.enabler.Feature;
-import fi.helsinki.cs.iot.hub.model.enabler.Plugin;
-import fi.helsinki.cs.iot.hub.model.enabler.PluginException;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
-import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
 import fi.helsinki.cs.iot.hub.model.feed.AtomicFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ComposedFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ExecutableFeed;
@@ -267,7 +264,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					" WHERE " + IotHubDataHandler.KEY_FEED_TYPE + " = '" + IotHubDataHandler.ATOMIC_FEED + "'";
 			Statement statement = connection.createStatement();
 			ResultSet rs = statement.executeQuery(sql);
-			if (rs.next()) {
+			while (rs.next()) {
 				long feedId = rs.getLong(IotHubDataHandler.KEY_FEED_ID);
 				atomicFeedList.add(getAtomicFeed(feedId));
 			}
@@ -452,7 +449,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					" WHERE " + IotHubDataHandler.KEY_FEED_TYPE + " = '" + IotHubDataHandler.COMPOSED_FEED + "'";
 			Statement statement = connection.createStatement();
 			ResultSet rs = statement.executeQuery(sql);
-			if (rs.next()) {
+			while (rs.next()) {
 				long feedId = rs.getLong(IotHubDataHandler.KEY_FEED_ID);
 				composedFeedList.add(getComposedFeed(feedId));
 			}
@@ -594,7 +591,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					" WHERE " + IotHubDataHandler.KEY_FEED_TYPE + " = '" + IotHubDataHandler.EXECUTABLE_FEED + "'";
 			Statement statement = connection.createStatement();
 			ResultSet rs = statement.executeQuery(sql);
-			if (rs.next()) {
+			while (rs.next()) {
 				long feedId = rs.getLong(IotHubDataHandler.KEY_FEED_ID);
 				executableFeedList.add(getExecutableFeed(feedId));
 			}
@@ -1087,7 +1084,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					" WHERE " + IotHubDataHandler.KEY_PLUGIN_INFO_TYPE + " = '" + IotHubDataHandler.JAVASCRIPT_PLUGIN + "'";
 			Statement statement = connection.createStatement();
 			ResultSet rs = statement.executeQuery(sql);
-			if (rs.next()) {
+			while (rs.next()) {
 				long pluginId = rs.getLong(IotHubDataHandler.KEY_PLUGIN_INFO_ID);
 				pluginInfos.add(getPluginInfo(pluginId));
 			}
@@ -1109,7 +1106,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					" WHERE " + IotHubDataHandler.KEY_PLUGIN_INFO_TYPE + " = '" + IotHubDataHandler.NATIVE_PLUGIN + "'";
 			Statement statement = connection.createStatement();
 			ResultSet rs = statement.executeQuery(sql);
-			if (rs.next()) {
+			while (rs.next()) {
 				long pluginId = rs.getLong(IotHubDataHandler.KEY_PLUGIN_INFO_ID);
 				pluginInfos.add(getPluginInfo(pluginId));
 			}
@@ -1260,7 +1257,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				String metadata = rs.getString(IotHubDataHandler.KEY_ENABLER_METADATA);
 				long pluginId = rs.getLong(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO);
 				String pluginConfiguration = rs.getString(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG);
-				enabler = new Enabler(pluginId, name, metadata, getPluginInfo(pluginId), pluginConfiguration);
+				enabler = new Enabler(id, name, metadata, getPluginInfo(pluginId), pluginConfiguration);
 				List<Feature> features = getFeaturesForEnabler(enabler);
 				for (Feature feature : features) {
 					enabler.addFeature(feature);
@@ -1291,25 +1288,12 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				boolean isFeed = rs.getBoolean(IotHubDataHandler.KEY_FEATURE_IS_FEED);
 				Feature feature = new Feature(featureId, enabler, name, type);
 				feature.setAtomicFeed(isFeed);
-				Plugin plugin = PluginManager.getInstance().getConfiguredPlugin(enabler.getPluginInfo(), 
-						enabler.getPluginConfig());
-				if (plugin != null) {
-					//It is now time to setup the availability of the atomic feed
-					feature.setSupported(plugin.isSupported(feature));
-					feature.setAvailable(plugin.isAvailable(feature));
-					feature.setReadable(plugin.isReadable(feature));
-					feature.setWritable(plugin.isWritable(feature));
-				}
 				features.add(feature);
 				Log.d(TAG, "Got one feature from the db");
 			}
 			rs.close();
 			ps.close();
 		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			return null;
-		} catch (PluginException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
 		}
@@ -1324,7 +1308,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			String sql = "select * from " + IotHubDataHandler.TABLE_ENABLER;
 			Statement statement = connection.createStatement();
 			ResultSet rs = statement.executeQuery(sql);
-			if (rs.next()) {
+			while (rs.next()) {
 				long enablerId = rs.getLong(IotHubDataHandler.KEY_ENABLER_ID);
 				enablers.add(getEnabler(enablerId));
 			}

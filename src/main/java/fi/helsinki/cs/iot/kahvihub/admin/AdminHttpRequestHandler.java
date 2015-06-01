@@ -289,6 +289,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 				File file = copyPluginFile(pfd);
 				if (file != null) {
 					if (pfd.type.equals("native")) {
+						Log.d(TAG, "Adding the native plugin to db");
 						IotHubDataAccess.getInstance().addNativePlugin(pfd.serviceName, pfd.packageName, file);
 					}
 					else {
@@ -391,6 +392,7 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 					Log.e(TAG, "The feature should not be null");
 					break;
 				}
+				
 			}
 		} catch (PluginException e) {
 			// TODO Auto-generated catch block
@@ -409,6 +411,9 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 			enabler = IotHubDataAccess.getInstance().getEnabler(enablerId);
 		}
 		else {
+			if (enabler == null) {
+				Log.e(TAG, "The enabler with id " + enablerId + " should not be null");
+			}
 			String enablerConfig = getConfigurationFromForm(enabler, parameters, files);
 			if (enablerConfig != null) {
 				Log.d(TAG, "Trying to update the configuration of the enabler");
@@ -433,7 +438,6 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 				}
 			}
 		}
-		System.out.println("Number of features of the enabler: " + enabler.getFeatures().size());
 		String html = "<html>";
 		html += "<head><title>Configuration of the enabler " + enabler.getName() + "</title></head>";
 		html += "<body>";
