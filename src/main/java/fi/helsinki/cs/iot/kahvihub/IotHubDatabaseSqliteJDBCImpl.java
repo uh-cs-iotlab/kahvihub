@@ -47,6 +47,8 @@ import fi.helsinki.cs.iot.hub.model.feed.Feed;
 import fi.helsinki.cs.iot.hub.model.feed.FeedEntry;
 import fi.helsinki.cs.iot.hub.model.feed.Field;
 import fi.helsinki.cs.iot.hub.model.feed.FieldDescription;
+import fi.helsinki.cs.iot.hub.model.service.Service;
+import fi.helsinki.cs.iot.hub.model.service.ServiceInfo;
 import fi.helsinki.cs.iot.hub.utils.Log;
 
 /**
@@ -1482,26 +1484,253 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		return null;
 	}
 
-	/*
-	 * TODO List of stuff still to implement
-	 private void deletePluginInfo(PluginInfo pluginInfo) {
-		long id = pluginInfo.getId();
+	/* Services functions */
+	
+	@Override
+	public Service addService(ServiceInfo serviceInfo, 
+			String name, String metadata, String config, boolean bootAtStartup) {
+		Service service = null;
+		if (serviceInfo == null || name == null) {
+			Log.e(TAG, "One cannot create a service where the serviceInfo is null, or name is null");
+			return null;
+		}
 		try {
 			checkOpenness();
 			connection.setAutoCommit(false);
-			String sql = "delete from " + IotHubDataHandler.TABLE_PLUGIN_INFO + 
-					" where " + IotHubDataHandler.KEY_PLUGIN_INFO_ID + " = ?";
-			PreparedStatement ps = connection.prepareStatement(sql);
-			ps.setLong(1, id);
-			ps.execute();
-			connection.commit();
-			Log.i(TAG, "Plugin info deleted with id: " + id);
+			String sqlInsert = "INSERT INTO " + IotHubDataHandler.TABLE_SERVICE + "("
+					+ IotHubDataHandler.KEY_SERVICE_NAME + "," 
+					+ IotHubDataHandler.KEY_SERVICE_METADATA + ","
+					+ IotHubDataHandler.KEY_SERVICE_SERVICE_INFO + ","
+					+ IotHubDataHandler.KEY_SERVICE_CONFIG + ","
+					+ IotHubDataHandler.KEY_SERVICE_BOOT_AT_STARTUP + ") VALUES (?,?,?,?,?)";
+			PreparedStatement psInsert = connection.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS);
+			psInsert.setString(1, name);
+			psInsert.setString(2, metadata);
+			psInsert.setLong(3, serviceInfo.getId());
+			psInsert.setString(4, config);
+			psInsert.setBoolean(5,  bootAtStartup);
+			psInsert.executeUpdate();
+			ResultSet genKeys = psInsert.getGeneratedKeys();
+			if (genKeys.next()) {
+				long insertId = genKeys.getLong(1);
+				//At point we should have everything set so it is time to retrieve the plugin from the database
+				Log.d(TAG, "Now i will try to collect the service that was just added to the db");
+				service = getService(insertId);
+				if (service == null) {
+					Log.e(TAG, "The feature should not be null");
+				}
+			}
+			else {
+				Log.e(TAG, "The insert of feature " + name + " did not work");
+			}
+			genKeys.close();
+			psInsert.close();
 		} catch (SQLException | IotHubDatabaseException e) {
 			e.printStackTrace();
-			Log.e(TAG, "Plugin delete failed for id: " + id);
-		}	
-
+			service = null;
+		}
+		try {
+			if (service == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return service;
 	}
-	 */
+
+	@Override
+	public ServiceInfo addServiceInfo(String name, File file) {
+		ServiceInfo service = null;
+		if (file == null || name == null) {
+			Log.e(TAG, "One cannot create a serviceInfo where the file is null, or name is null");
+			return null;
+		}
+		try {
+			checkOpenness();
+			connection.setAutoCommit(false);
+			String sqlInsert = "INSERT INTO " + IotHubDataHandler.TABLE_SERVICE_INFO + "("
+					+ IotHubDataHandler.KEY_SERVICE_INFO_SERVICE_NAME + "," 
+					+ IotHubDataHandler.KEY_SERVICE_INFO_FILENAME + ") VALUES (?,?)";
+			PreparedStatement psInsert = connection.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS);
+			psInsert.setString(1, name);
+			psInsert.setString(2, file.getName());
+			psInsert.executeUpdate();
+			ResultSet genKeys = psInsert.getGeneratedKeys();
+			if (genKeys.next()) {
+				long insertId = genKeys.getLong(1);
+				//At point we should have everything set so it is time to retrieve the plugin from the database
+				Log.d(TAG, "Now i will try to collect the service that was just added to the db");
+				service = getServiceInfo(insertId);
+				if (service == null) {
+					Log.e(TAG, "The feature should not be null");
+				}
+			}
+			else {
+				Log.e(TAG, "The insert of feature " + name + " did not work");
+			}
+			genKeys.close();
+			psInsert.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			service = null;
+		}
+		try {
+			if (service == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return service;
+	}
+
+	@Override
+	public Service deleteService(String name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ServiceInfo deleteServiceInfo(String name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Service getService(long id) {
+		Service service = null;
+		try {
+			checkOpenness();
+			final String query = "SELECT * FROM " +
+					IotHubDataHandler.TABLE_SERVICE +
+					" WHERE " + IotHubDataHandler.KEY_SERVICE_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				long serviceInfoId = rs.getLong(IotHubDataHandler.KEY_SERVICE_SERVICE_INFO);
+				String name = rs.getString(IotHubDataHandler.KEY_SERVICE_NAME);
+				String metadata = rs.getString(IotHubDataHandler.KEY_SERVICE_METADATA);
+				String config = rs.getString(IotHubDataHandler.KEY_SERVICE_CONFIG);
+				boolean bootOnStartup = rs.getBoolean(IotHubDataHandler.KEY_SERVICE_BOOT_AT_STARTUP);
+				ServiceInfo serviceInfo = getServiceInfo(serviceInfoId);
+				service = new KahvihubService(id, serviceInfo, 
+						name, metadata, config, bootOnStartup);
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return service;
+	}
+
+	@Override
+	public ServiceInfo getServiceInfo(long id) {
+		ServiceInfo serviceInfo = null;
+		try {
+			checkOpenness();
+			final String query = "SELECT * FROM " +
+					IotHubDataHandler.TABLE_SERVICE_INFO +
+					" WHERE " + IotHubDataHandler.KEY_SERVICE_INFO_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(query);
+			ps.setLong(1, id);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				String name = rs.getString(IotHubDataHandler.KEY_SERVICE_INFO_SERVICE_NAME);
+				String fileLocator = rs.getString(IotHubDataHandler.KEY_SERVICE_INFO_FILENAME);
+				File file = new File(fileLocator);
+				if (file.exists()) {
+					serviceInfo = new ServiceInfo(id, name, file);
+				}
+			}
+			rs.close();
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return serviceInfo;
+	}
+
+	@Override
+	public List<ServiceInfo> getServiceInfos() {
+		List<ServiceInfo> serviceInfos = new ArrayList<>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_SERVICE_INFO;
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(sql);
+			while (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_SERVICE_INFO_ID);
+				serviceInfos.add(getServiceInfo(id));
+			}
+			rs.close();
+			statement.close();
+			return serviceInfos;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	@Override
+	public List<Service> getServices() {
+		List<Service> services = new ArrayList<>();
+		try {
+			checkOpenness();
+			String sql = "select * from " + IotHubDataHandler.TABLE_SERVICE;
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(sql);
+			while (rs.next()) {
+				long id = rs.getLong(IotHubDataHandler.KEY_SERVICE_ID);
+				services.add(getService(id));
+			}
+			rs.close();
+			statement.close();
+			return services;
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	@Override
+	public Service updateService(Service service, String name, 
+			String metadata, String config, boolean bootAtStartup) {
+		if (service == null) {
+			return null;
+		}
+		try {
+			checkOpenness();
+			String sql = "update " + IotHubDataHandler.TABLE_SERVICE + " set " + 
+					IotHubDataHandler.KEY_SERVICE_NAME + "=?, " +
+					IotHubDataHandler.KEY_SERVICE_METADATA + "=?, " +
+					IotHubDataHandler.KEY_SERVICE_CONFIG + "=?, " +
+					IotHubDataHandler.KEY_SERVICE_BOOT_AT_STARTUP + "=?" +
+					" where " + IotHubDataHandler.KEY_SERVICE_ID + "=?";
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setString(1, name);
+			ps.setString(2, metadata);
+			ps.setString(3, config);
+			ps.setBoolean(4, bootAtStartup);
+			ps.setLong(5, service.getId());
+			if (ps.executeUpdate() == 1) {
+				Service newService = getService(service.getId());
+				return newService;
+			}
+			ps.close();
+		} catch (SQLException | IotHubDatabaseException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return null;
+	}
 
 }
