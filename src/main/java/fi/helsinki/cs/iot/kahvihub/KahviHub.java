@@ -48,6 +48,7 @@ public class KahviHub {
 
 	private static void setLogger(HubConfig config) {
 		//TODO I would need a better logger, maybe even the one from android
+		// I should also try to make the logger available for native plugins
 		Logger logger = new Logger(){
 			@Override
 			public void d(String tag, String msg) {
