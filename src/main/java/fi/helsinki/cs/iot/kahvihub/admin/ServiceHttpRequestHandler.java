@@ -31,6 +31,7 @@ import org.json.JSONObject;
 
 import fi.helsinki.cs.iot.hub.api.HttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
+import fi.helsinki.cs.iot.hub.model.service.RunnableService;
 import fi.helsinki.cs.iot.hub.model.service.Service;
 import fi.helsinki.cs.iot.hub.model.service.ServiceException;
 import fi.helsinki.cs.iot.hub.model.service.ServiceInfo;
@@ -88,6 +89,17 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 			String[] arr = uri.substring(enablerUrlFilterWithSlash.length()).split("/");
 			if (arr.length > 0) {
 				return arr[0];
+			}
+		}
+		return null;
+	}
+	
+	private String getServiceCommand(String uri) {
+		String enablerUrlFilterWithSlash = uriFilter + "/";
+		if (uri.startsWith(enablerUrlFilterWithSlash) && uri.length() > enablerUrlFilterWithSlash.length()) {
+			String[] arr = uri.substring(enablerUrlFilterWithSlash.length()).split("/");
+			if (arr.length > 1) {
+				return arr[1];
 			}
 		}
 		return null;
@@ -161,7 +173,6 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 	
 	private Response handleGetRequest(String uri, Map<String, String> parameters, 
 			String mimeType, Map<String, String> files) {
-		Log.d(TAG, "Received a get request for service");
 		int numberOfIdentifiers = getNumberOfIdentifiers(uri);
 		if (numberOfIdentifiers == 0) {
 			List<Service> services = IotHubDataAccess.getInstance().getServices();
@@ -177,12 +188,87 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 			}
 			return getJsonResponseOk(jArray.toString());
 		}
+		else if (numberOfIdentifiers == 1) {
+			//1: service name
+			String serviceName = getServiceName(uri);
+			Service service = IotHubDataAccess.getInstance().getService(serviceName);
+			if (service != null) {
+				return getJsonResponseOk(service.getJsonDescription());
+			}
+			else {
+				return getJsonResponseKo("BAD_REQUEST", "The service " + serviceName + " could not be found");
+			}
+		}
+		else if (numberOfIdentifiers == 2) {
+			//1: service name
+			//2: start/stop
+			String serviceName = getServiceName(uri);
+			String serviceCommand = getServiceCommand(uri);
+			Service service = IotHubDataAccess.getInstance().getService(serviceName);
+			RunnableService runnableService = null;
+			try {
+				runnableService = ServiceManager.getInstance().getConfiguredRunnableService(service);
+			} catch (ServiceException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return getJsonResponseKo("BAD_REQUEST", "BAD_REQUEST");
+			}
+			if ("start".equalsIgnoreCase(serviceCommand)) {
+				if (!runnableService.isStarted()) {
+					runnableService.start();
+					JSONObject json = new JSONObject();
+					try {
+						json.put("status", serviceName + " started");
+					} catch (JSONException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					return getJsonResponseOk(json.toString());
+				}
+				else {
+					JSONObject json = new JSONObject();
+					try {
+						json.put("status", serviceName + " already started");
+					} catch (JSONException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					return getJsonResponseOk(json.toString());
+				}
+			}
+			else if ("stop".equalsIgnoreCase(serviceCommand)) {
+				if (runnableService.isStarted()) {
+					runnableService.stop();
+					JSONObject json = new JSONObject();
+					try {
+						json.put("status", serviceName + " stopped");
+					} catch (JSONException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					return getJsonResponseOk(json.toString());
+				}
+				else {
+					JSONObject json = new JSONObject();
+					try {
+						json.put("status", serviceName + " not running");
+					} catch (JSONException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					return getJsonResponseOk(json.toString());
+				}
+			}
+			else {
+				getJsonResponseKo("BAD_REQUEST", "BAD_REQUEST");
+			}
+		}
 		return getJsonResponseKo("BAD_REQUEST", "BAD_REQUEST");
 	}
 	
 	private Response handlePostRequest(String uri, Map<String, String> parameters, 
 			String mimeType, Map<String, String> files) {
-		Log.d(TAG, "Received a post request for service");
+		//Log.d(TAG, "Received a post request for service");
 		if (isJsonMimeType(mimeType)) {
 			String data = getJsonData(files);
 			int numberOfIdentifiers = getNumberOfIdentifiers(uri);
@@ -238,7 +324,7 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 	@Override
 	public Response handleRequest(Method method, String uri,
 			Map<String, String> parameters, String mimeType, Map<String, String> files) {
-		Log.d(TAG, "Received a request for service, uri: "+ uri);
+		Log.d(TAG, "Received request for service: /" + method.name() + " " + uri);
 		switch (method) {
 		case GET:
 			return handleGetRequest(uri, parameters, mimeType, files);

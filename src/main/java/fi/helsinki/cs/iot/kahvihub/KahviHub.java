@@ -19,6 +19,8 @@ package fi.helsinki.cs.iot.kahvihub;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -32,6 +34,8 @@ import fi.helsinki.cs.iot.hub.api.ListHttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.model.enabler.NativePluginHelper;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
+import fi.helsinki.cs.iot.hub.model.service.JavascriptRunnableServiceHelper;
+import fi.helsinki.cs.iot.hub.model.service.ServiceManager;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.utils.Logger;
 import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
@@ -45,6 +49,8 @@ import fi.helsinki.cs.iot.kahvihub.conf.HubConfig;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  */
 public class KahviHub {
+
+	private static final String TAG = "KahviHub";
 
 	private static void setLogger(HubConfig config) {
 		//TODO I would need a better logger, maybe even the one from android
@@ -82,11 +88,19 @@ public class KahviHub {
 		PluginManager.getInstance().setNativePluginHelper(nativePluginHelper);
 	}
 
+	private static void setJavascriptRunnableServiceHelper(HubConfig config) {
+		List<String> initFiles = new ArrayList<String>();
+		initFiles.add("httpRequest.js");
+		JavascriptRunnableServiceHelper javascriptRunnableServiceHelper = new JavascriptRunnableServiceHelper(config.getLibdir(), initFiles);
+		ServiceManager.getInstance().setServiceHelper(javascriptRunnableServiceHelper);
+	}
+	
 	//TODO init should be reading a config file
 	public static void init(HubConfig config) {
 		setLogger(config);
 		setIotHubDataHandler(config);
 		setNativePluginHelper(config);
+		setJavascriptRunnableServiceHelper(config);
 	}
 
 	public static void main(String[] args) throws InterruptedException {
@@ -101,7 +115,7 @@ public class KahviHub {
 			cmd = parser.parse(options, args);
 			String configFile = cmd.getOptionValue("c");
 			if (configFile == null) {
-				System.err.println("The config file option was not provided");
+				Log.e(TAG, "The config file option was not provided");
 				// automatically generate the help statement
 				HelpFormatter formatter = new HelpFormatter();
 				formatter.printHelp("c", options);
@@ -121,7 +135,7 @@ public class KahviHub {
 					try {
 						server.start();
 					} catch (IOException ioe) {
-						System.err.println("Couldn't start server:\n" + ioe);
+						Log.e(TAG, "Couldn't start server:\n" + ioe);
 						System.exit(-1);
 					}
 					Runtime.getRuntime().addShutdownHook(new Thread()
@@ -130,7 +144,7 @@ public class KahviHub {
 						public void run()
 						{
 							server.stop();
-							System.out.println("Server stopped");
+							Log.i(TAG, "Server stopped");
 						}
 					});
 
@@ -139,13 +153,13 @@ public class KahviHub {
 						Thread.sleep(1000);
 					}
 				} catch (ConfigurationParsingException | IOException e){
-					System.err.println(e.getMessage());
+					Log.e(TAG, e.getMessage());
 					System.exit(-1);
 				} 
 			}
 
 		} catch (ParseException e) {
-			System.err.println(e.getMessage());
+			Log.e(TAG, e.getMessage());
 			System.exit(-1);
 		}		
 	}

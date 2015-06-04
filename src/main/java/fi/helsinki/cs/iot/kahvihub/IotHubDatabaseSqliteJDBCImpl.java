@@ -186,7 +186,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				//Now we add the fields
 				addFeedFeatureRelation(insertIdFeed, feature.getId());
 				//At point we should have everything set so it is time to retrieve the atomic feed from the database
-				Log.d(TAG, "Now i will try to collect the atomic feed that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the atomic feed that was just added to the db");
 				feed = getAtomicFeed(insertIdFeed);
 				if (feed == null) {
 					Log.e(TAG, "The feed should not be null");
@@ -372,7 +372,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				//Now we add the fields
 				addFeedFields(insertIdFeed, fields);
 				//At point we should have everything set so it is time to retrieve the composed feed from the database
-				Log.d(TAG, "Now i will try to collect the composed feed that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the composed feed that was just added to the db");
 				composedFeed = getComposedFeed(insertIdFeed);
 				if (composedFeed == null) {
 					Log.e(TAG, "The feed should not be null");
@@ -559,7 +559,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				//Now we add the fields
 				addExecutableFeedDescription(insertIdFeed, executableFeedDescription);
 				//At point we should have everything set so it is time to retrieve the composed feed from the database
-				Log.d(TAG, "Now i will try to collect the executable feed that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the executable feed that was just added to the db");
 				executableFeed = getExecutableFeed(insertIdFeed);
 				if (executableFeed == null) {
 					Log.e(TAG, "The feed should not be null");
@@ -1008,7 +1008,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			if (genKeysPlugin.next()) {
 				long insertIdPlugin = genKeysPlugin.getLong(1);
 				//At point we should have everything set so it is time to retrieve the plugin from the database
-				Log.d(TAG, "Now i will try to collect the plugin that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the plugin that was just added to the db");
 				pluginInfo = getPluginInfo(insertIdPlugin);
 				if (pluginInfo == null) {
 					Log.e(TAG, "The plugin should not be null");
@@ -1066,7 +1066,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			if (genKeysPlugin.next()) {
 				long insertIdPlugin = genKeysPlugin.getLong(1);
 				//At point we should have everything set so it is time to retrieve the plugin from the database
-				Log.d(TAG, "Now i will try to collect the plugin that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the plugin that was just added to the db");
 				pluginInfo = getPluginInfo(insertIdPlugin);
 				if (pluginInfo == null) {
 					Log.e(TAG, "The plugin should not be null");
@@ -1216,7 +1216,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			if (genKeysEnabler.next()) {
 				long insertIdEnabler= genKeysEnabler.getLong(1);
 				//At point we should have everything set so it is time to retrieve the plugin from the database
-				Log.d(TAG, "Now i will try to collect the enabler that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the enabler that was just added to the db");
 				enabler = getEnabler(insertIdEnabler);
 				if (enabler == null) {
 					Log.e(TAG, "The enabler should not be null");
@@ -1398,7 +1398,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			if (genKeysFeature.next()) {
 				long insertIdFeature = genKeysFeature.getLong(1);
 				//At point we should have everything set so it is time to retrieve the plugin from the database
-				Log.d(TAG, "Now i will try to collect the feature that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the feature that was just added to the db");
 				feature = getFeature(insertIdFeature);
 				if (feature == null) {
 					Log.e(TAG, "The feature should not be null");
@@ -1514,7 +1514,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			if (genKeys.next()) {
 				long insertId = genKeys.getLong(1);
 				//At point we should have everything set so it is time to retrieve the plugin from the database
-				Log.d(TAG, "Now i will try to collect the service " + insertId + " that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the service " + insertId + " that was just added to the db");
 				service = getService(insertId);
 				if (service == null) {
 					Log.e(TAG, "The service " + name + " should not be null");
@@ -1562,7 +1562,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			if (genKeys.next()) {
 				long insertId = genKeys.getLong(1);
 				//At point we should have everything set so it is time to retrieve the plugin from the database
-				Log.d(TAG, "Now i will try to collect the service info " + name + " that was just added to the db");
+				//Log.d(TAG, "Now i will try to collect the service info " + name + " that was just added to the db");
 				service = getServiceInfo(insertId);
 				if (service == null) {
 					Log.e(TAG, "The service info " + name + " should not be null");
@@ -1671,7 +1671,8 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		return serviceInfo;
 	}
 
-	private Service getService(String name) {
+	@Override
+	public Service getService(String name) {
 		Service service = null;
 		try {
 			checkOpenness();
