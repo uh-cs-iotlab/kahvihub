@@ -202,7 +202,7 @@ public class PluginHttpRequestHandler extends HttpRequestHandler {
 		for (PluginInfo pluginInfo : plugins) {
 			String pluginHtml = "<b>" + pluginInfo.getType().name() + "</b>: ";
 			pluginHtml += pluginInfo.getPackageName() + " - " + pluginInfo.getServiceName();
-			pluginHtml += "<a href='"+ uriFilter +"?plugin=" + pluginInfo.getId() + "'>Install an enabler for this plugin</a>";
+			pluginHtml += "<a href='"+ AdminHttpRequestHandler.enablerUrlFilter +"?plugin=" + pluginInfo.getId() + "'>Install an enabler for this plugin</a>";
 			html += "<li>" + pluginHtml + "</li>";
 		}
 		html += "</ul>";

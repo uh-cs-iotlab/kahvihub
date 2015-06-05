@@ -36,9 +36,9 @@ public class AdminHttpRequestHandler extends HttpRequestHandler {
 	//private static final String TAG = "AdminHttpRequestHandler";
 
 	private static final String filter = "/admin/";
-	private static final String pluginUrlFilter = filter + "plugins";
-	private static final String enablerUrlFilter = filter + "enablers";
-	private static final String serviceUrlFilter = filter + "services";
+	protected static final String pluginUrlFilter = filter + "plugins";
+	protected static final String enablerUrlFilter = filter + "enablers";
+	protected static final String serviceUrlFilter = filter + "services";
 
 	private List<HttpRequestHandler> requestHandlers;
 
