@@ -90,6 +90,7 @@ public class KahviHub {
 
 	private static void setJavascriptRunnableServiceHelper(HubConfig config) {
 		List<String> initFiles = new ArrayList<String>();
+		initFiles.add("ecma_eventloop.js");
 		initFiles.add("httpRequest.js");
 		JavascriptRunnableServiceHelper javascriptRunnableServiceHelper = new JavascriptRunnableServiceHelper(config.getLibdir(), initFiles);
 		ServiceManager.getInstance().setServiceHelper(javascriptRunnableServiceHelper);
