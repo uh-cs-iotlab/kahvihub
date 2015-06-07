@@ -21,7 +21,6 @@ import java.util.Map;
 
 import fi.helsinki.cs.iot.hub.model.enabler.Plugin;
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
-import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.kahvihub.plugin.KahvihubNativeFeatureDescription;
 import fi.helsinki.cs.iot.kahvihub.plugin.KahvihubNativePlugin;
 
