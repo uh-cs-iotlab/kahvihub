@@ -305,24 +305,25 @@ public class EnablerHttpRequestHandler extends HttpRequestHandler {
 		}
 		else {
 			EnablerFormDetails efd = getEnablerFormDetails(parameters, files);
-			if (efd.isEmpty()) {
-				if (parameters.containsKey("plugin")) {
-					long pluginId = Long.parseLong(parameters.get("plugin"));
-					return getInstallEnabler(pluginId);
-				}
-				else {
-					return getInstallEnabler(0);
-				}
-			}
-			else {
+			if (!efd.isEmpty()) {
 				boolean isValid = checkEnablerFormDetails(efd);
 				if (isValid) {
 					Enabler enabler = IotHubDataAccess.getInstance().addEnabler(efd.name, efd.metadata, efd.pluginInfo, null);
-					if (enabler != null) {
-						return new NanoHTTPD.Response(Status.OK, "text/plain; charset=utf-8", efd.toString());
+					if (enabler == null) {
+						return new NanoHTTPD.Response(Status.BAD_REQUEST, "text/plain; charset=utf-8", efd.toString());
 					}
 				}
-				return new NanoHTTPD.Response(Status.BAD_REQUEST, "text/plain; charset=utf-8", efd.toString());
+				else {
+					return new NanoHTTPD.Response(Status.BAD_REQUEST, "text/plain; charset=utf-8", efd.toString());
+				}
+				
+			}
+			if (parameters.containsKey("plugin")) {
+				long pluginId = Long.parseLong(parameters.get("plugin"));
+				return getInstallEnabler(pluginId);
+			}
+			else {
+				return getInstallEnabler(0);
 			}
 		}
 	}

@@ -128,7 +128,6 @@ public class KahvihubNativePluginWrapper implements Plugin {
 	 */
 	@Override
 	public boolean isReadable(FeatureDescription featureDescription) {
-		Log.d("TEST", "I do this");
 		if (featureDescription != null) {
 			return plugin.isFeatureReadable(
 					new KahvihubNativeFeatureDescription(featureDescription.getName(), featureDescription.getType()));

@@ -41,17 +41,17 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response.Status;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  */
 public class PluginHttpRequestHandler extends HttpRequestHandler {
-	
+
 	private static final String TAG = "PluginHttpRequestHandler";
-	
+
 	private static final String PLUGIN_SERVICE_NAME = "serviceName";
 	private static final String PLUGIN_PACKAGE_NAME = "packageName";
 	private static final String PLUGIN_TYPE = "type";
 	private static final String PLUGIN_FILE= "file";
-	
+
 	private final String pluginFolder;
 	private final String uriFilter;
-	
+
 	/**
 	 * @param pluginFolder
 	 * @param uriFilter
@@ -60,7 +60,7 @@ public class PluginHttpRequestHandler extends HttpRequestHandler {
 		this.pluginFolder = pluginFolder;
 		this.uriFilter = uriFilter;
 	}
-	
+
 	private class PluginFormDetails {
 
 		private String serviceName;
@@ -103,7 +103,7 @@ public class PluginHttpRequestHandler extends HttpRequestHandler {
 					+ ", file=" + file + "]";
 		}
 	}
-	
+
 	private PluginFormDetails getPluginFormDetails(Map<String, String> parameters, Map<String, String> files) {
 		String serviceName = parameters.get(PLUGIN_SERVICE_NAME);
 		String packageName = parameters.get(PLUGIN_PACKAGE_NAME);
@@ -127,12 +127,12 @@ public class PluginHttpRequestHandler extends HttpRequestHandler {
 			return false;
 		}
 	}
-	
+
 	private boolean checkNativePlugin(PluginFormDetails pfd) throws PluginException {
 		PluginManager.getInstance().checkNativePlugin(pfd.serviceName, pfd.packageName, pfd.file);
 		return true;
 	}
-	
+
 	private boolean checkJavascriptPlugin(PluginFormDetails pfd) throws PluginException  {
 		PluginManager.getInstance().checkJavacriptPlugin(pfd.serviceName, pfd.packageName, pfd.file);
 		return true;
@@ -212,11 +212,7 @@ public class PluginHttpRequestHandler extends HttpRequestHandler {
 	public Response handleRequest(Method method, String uri,
 			Map<String, String> parameters, String mimeType, Map<String, String> files) {
 		PluginFormDetails pfd = getPluginFormDetails(parameters, files);
-		if (pfd.isEmpty()) {
-			//TODO I would need to do more later
-			return getInstallPlugin();
-		}
-		else {
+		if (!pfd.isEmpty()) {
 			boolean isValid = false;
 			try {
 				isValid = checkPluginFormDetails(pfd);
@@ -236,12 +232,10 @@ public class PluginHttpRequestHandler extends HttpRequestHandler {
 					else {
 						IotHubDataAccess.getInstance().addJavascriptPlugin(pfd.serviceName, pfd.packageName, file);
 					}
-					return new NanoHTTPD.Response(Status.OK, "text/plain; charset=utf-8", pfd.toString());
 				}
 			}
-
-			return new NanoHTTPD.Response(Status.BAD_REQUEST, "text/plain; charset=utf-8", pfd.toString());
 		}
+		return getInstallPlugin();
 	}
 
 	@Override
