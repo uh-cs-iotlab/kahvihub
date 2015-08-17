@@ -1,0 +1,35 @@
+apply plugin: 'java'
+apply plugin: "maven"
+
+sourceCompatibility = 1.7
+version = '1.0'
+group = 'fi.helsinki.cs.iot.hub'
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'Library needed for developing native (Java) plugins for Kahvihub',
+                   'Implementation-Version': version
+    }
+}
+ 
+repositories {
+	mavenLocal()
+    mavenCentral()
+} 
+
+dependencies {
+    compile group: 'commons-collections', name: 'commons-collections', version: '3.2'
+    testCompile group: 'junit', name: 'junit', version: '4.+'
+}
+
+test {
+    systemProperties 'property': 'value'
+}
+
+uploadArchives {
+    repositories {
+       flatDir {
+           dirs 'repos'
+       }
+    }
+}
