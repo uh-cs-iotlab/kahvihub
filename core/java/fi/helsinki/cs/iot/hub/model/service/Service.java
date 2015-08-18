@@ -25,14 +25,14 @@ import org.json.JSONObject;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  */
 public class Service {
-	
+
 	private final long id;
 	private final ServiceInfo serviceInfo;
 	private final String name;
 	private final String metadata;
 	private final String config;
 	private final boolean bootOnStartup;
-	
+
 	/**
 	 * @param id
 	 * @param serviceInfo
@@ -50,7 +50,7 @@ public class Service {
 		this.config = config;
 		this.bootOnStartup = bootAtStartup;
 	}
-	
+
 	/**
 	 * @return the id
 	 */
@@ -64,7 +64,7 @@ public class Service {
 	public ServiceInfo getServiceInfo() {
 		return serviceInfo;
 	}
-	
+
 	/**
 	 * @return the name
 	 */
@@ -93,24 +93,17 @@ public class Service {
 		return bootOnStartup;
 	}
 
-	public String getJsonDescription() {
-		try {
-			JSONObject jsonObject = new JSONObject();
-			jsonObject.put("name", name);
-			if (metadata != null) {
-				jsonObject.put("metadata", metadata);
-			}
-			if (config != null) {
-				jsonObject.put("config", config);
-			}
-			jsonObject.put("bootOnStartup", bootOnStartup);
-			jsonObject.put("serviceInfo", serviceInfo.toJSON());
-			return jsonObject.toString();
-		} catch (JSONException e) {
-			e.printStackTrace();
-			
+	public JSONObject toJSON() throws JSONException {
+		JSONObject jsonObject = new JSONObject();
+		jsonObject.put("name", name);
+		if (metadata != null) {
+			jsonObject.put("metadata", metadata);
 		}
-		return null;
+		if (config != null) {
+			jsonObject.put("config", config);
+		}
+		jsonObject.put("bootOnStartup", bootOnStartup);
+		jsonObject.put("serviceInfo", serviceInfo.toJSON());
+		return jsonObject;
 	}
-	
 }

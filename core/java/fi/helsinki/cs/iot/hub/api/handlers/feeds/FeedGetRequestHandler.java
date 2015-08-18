@@ -1,5 +1,5 @@
 /*
- * fi.helsinki.cs.iot.hub.api.FeedGetRequestHandler
+ * fi.helsinki.cs.iot.hub.api.handlers.feeds.FeedGetRequestHandler
  * v0.1
  * 2015
  *

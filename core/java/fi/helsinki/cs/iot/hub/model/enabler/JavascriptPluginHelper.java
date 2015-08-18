@@ -33,5 +33,6 @@ public interface JavascriptPluginHelper {
 	public Plugin createPluginWithScript(String pluginName, String script) throws PluginException;
 	public void checkPlugin(String pluginName, File file) throws PluginException;
 	public void checkPlugin(String pluginName, String script) throws PluginException;
+	public Plugin createPluginWithEnabler(Enabler enabler) throws PluginException;
 
 }

@@ -1693,24 +1693,23 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 	}
 
 	@Override
-	public Service deleteService(String name) {
-		Service service = getService(name);
+	public Service deleteService(Service service) {
 		if (service == null) {
-			Log.w(TAG, "Cannot delete service " + name);
+			Log.w(TAG, "Cannot delete a null service");
 			return null;
 		}
 		try {
 			checkOpenness();
 			final String query = "DELETE FROM " +
 					IotHubDataHandler.TABLE_SERVICE +
-					" WHERE " + IotHubDataHandler.KEY_SERVICE_NAME + "=?";
+					" WHERE " + IotHubDataHandler.KEY_SERVICE_ID + "=?";
 			PreparedStatement ps = connection.prepareStatement(query);
-			ps.setString(1, name);
+			ps.setLong(1, service.getId());
 			if (ps.execute()) {
-				Log.i(TAG, "Service " + name + " delete from db");
+				Log.i(TAG, "Service " + service.getId() + " delete from db");
 			}
 			else {
-				Log.w(TAG, "Delete service " + name + " has not affected any row");
+				Log.w(TAG, "Delete service " + service.getId() + " has not affected any row");
 				service = null;
 			}
 			ps.close();
@@ -1722,24 +1721,24 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 	}
 
 	@Override
-	public ServiceInfo deleteServiceInfo(String name) {
-		ServiceInfo service = getServiceInfo(name);
+	public ServiceInfo deleteServiceInfo(long id) {
+		ServiceInfo service = getServiceInfo(id);
 		if (service == null) {
-			Log.w(TAG, "Cannot delete service info " + name);
+			Log.w(TAG, "Cannot delete service info " + id);
 			return null;
 		}
 		try {
 			checkOpenness();
 			final String query = "DELETE FROM " +
 					IotHubDataHandler.TABLE_SERVICE_INFO +
-					" WHERE " + IotHubDataHandler.KEY_SERVICE_INFO_FILENAME + "=?";
+					" WHERE " + IotHubDataHandler.KEY_SERVICE_INFO_ID + "=?";
 			PreparedStatement ps = connection.prepareStatement(query);
-			ps.setString(1, name);
+			ps.setLong(1, id);
 			if (ps.execute()) {
-				Log.i(TAG, "Service info " + name + " delete from db");
+				Log.i(TAG, "Service info " + id + " delete from db");
 			}
 			else {
-				Log.w(TAG, "Delete service info " + name + " has not affected any row");
+				Log.w(TAG, "Delete service info " + id + " has not affected any row");
 				service = null;
 			}
 			ps.close();
@@ -1748,30 +1747,6 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			return null;
 		}
 		return service;
-	}
-
-	private ServiceInfo getServiceInfo(String name) {
-		ServiceInfo serviceInfo = null;
-		try {
-			checkOpenness();
-			final String query = "SELECT * FROM " +
-					IotHubDataHandler.TABLE_SERVICE_INFO +
-					" WHERE " + IotHubDataHandler.KEY_SERVICE_INFO_SERVICE_NAME + "=?";
-			PreparedStatement ps = connection.prepareStatement(query);
-			ps.setString(1, name);
-			ResultSet rs = ps.executeQuery();
-			if (rs.next()) {
-				long id = rs.getLong(IotHubDataHandler.KEY_SERVICE_INFO_ID);
-				String filename = rs.getString(IotHubDataHandler.KEY_SERVICE_INFO_FILENAME);
-				serviceInfo = new ServiceInfo(id, name, filename);
-			}
-			rs.close();
-			ps.close();
-		} catch (SQLException | IotHubDatabaseException e) {
-			e.printStackTrace();
-			return null;
-		}
-		return serviceInfo;
 	}
 
 	@Override

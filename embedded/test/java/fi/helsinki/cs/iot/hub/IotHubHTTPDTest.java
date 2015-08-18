@@ -110,8 +110,9 @@ public class IotHubHTTPDTest {
 		pluginScript += String.format("%s.isFeatureWritable = function(name) { if (this.config && this.config.name == name) { return this.config.isWritable;}};", pluginName);
 		pluginScript += String.format("%s.getNumberOfFeatures = function() { if (this.config) { return 1; } else { return 0; } };", pluginName);
 		pluginScript += String.format("%s.getFeatureDescription = function(index) { if (this.config) { return JSON.stringify({name: this.config.name, type: \"whatever\"});}};", pluginName);
-		pluginScript += String.format("%s.getFeatureValue = function(name) { if (this.config && this.config.name == name) {return this.config.value} else {return null;} };", pluginName);
-		pluginScript += String.format("%s.postFeatureValue = function(name, data) { if (this.config && this.config.name == name) {this.config.value = data} else { return false;} };", pluginName);
+		pluginScript += String.format("%s.getFeatureValue = function(name) { if (this.config && this.config.name == name) {return JSON.stringify(this.config.value);} else {return null;} };", pluginName);
+		pluginScript += String.format("%s.postFeatureValue = function(name, data) { if (this.config && this.config.name == name) {"
+				+ "this.config.value = JSON.parse(data); makeConfigurationPersistant(JSON.stringify(this.config)); return true;} else { return false;} };", pluginName);
 
 		File temp = null;
 		try {
@@ -224,8 +225,8 @@ public class IotHubHTTPDTest {
 			JSONObject config = new JSONObject();
 			config.put("name", featureName);
 			config.put("isSupported", true);
-			config.put("isAvailable", false);
-			config.put("isReadable", false);
+			config.put("isAvailable", true);
+			config.put("isReadable", true);
 			config.put("isWritable", true);
 			config.put("getNumberOfFeatures", 1);
 			config.put("getFeatureDescription", featureName);
@@ -240,10 +241,9 @@ public class IotHubHTTPDTest {
 			expectedFeature.put("isAtomicFeed", false);
 			expectedFeature.put("name", featureName);
 			expectedFeature.put("isWritable", true);
-			expectedFeature.put("isReadable", false);
+			expectedFeature.put("isReadable", true);
 			expectedFeature.put("type", "whatever");
-			expectedFeature.put("isReadable", false);
-			expectedFeature.put("isAvailable", false);
+			expectedFeature.put("isAvailable", true);
 			array.put(expectedFeature);
 			jexpectedEnabler.put("features", array);
 			jexpectedEnabler.put("config", config.toString());
@@ -266,21 +266,36 @@ public class IotHubHTTPDTest {
 			expectedFeature.put("isAtomicFeed", true);
 			assertEquals(expectedFeature.toString(), res.trim());
 			
+			//Now I will check for feeds
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/feeds/", null);
+			JSONArray feedArray = new JSONArray(res);
+			assertEquals(1, feedArray.length());
+			JSONObject feed1 = feedArray.getJSONObject(0);
+			String feedName = feed1.getString("name");
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/feeds/" + feedName, null);
+			assertEquals("\"Hard to believe\"", res.trim());
+			
+			JSONObject toPostToFeed = new JSONObject("{\"test\": \"Unbelievable\"}");
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + port + "/feeds/" + feedName, toPostToFeed.toString());
+			assertEquals(toPostToFeed.toString(), res.trim());
+			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/feeds/" + feedName, null);
+			assertEquals(toPostToFeed.toString(), res.trim());
+			
 			data.put("enableAsAtomicFeed", false);
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("PUT", "http://127.0.0.1:" + port + "/enablers/" + name + "/" + featureName, data.toString());
 			expectedFeature.put("isAtomicFeed", false);
 			assertEquals(expectedFeature.toString(), res.trim());
 			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/feeds/" + feedName, null);
+			JSONObject jerror = new JSONObject(res);
+			assertEquals("Error", jerror.getString("status"));
 			
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		
-		
-		
-		
 	}
 
 }

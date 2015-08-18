@@ -28,6 +28,8 @@ import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
+import fi.helsinki.cs.iot.hub.model.service.ServiceInfo;
+import fi.helsinki.cs.iot.hub.model.service.ServiceManager;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
 
@@ -44,7 +46,7 @@ public class PluginDeleteRequestHandler extends IotHubApiRequestHandler {
 		this.methods = new ArrayList<>();
 		this.methods.add(Method.DELETE);	
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see fi.helsinki.cs.iot.hub.api.RequestHandler#getSupportedMethods()
 	 */
@@ -54,24 +56,43 @@ public class PluginDeleteRequestHandler extends IotHubApiRequestHandler {
 	}
 
 
-	private Response getResponseWithStringId(String stringId) {
-		if (stringId == null) {
+	private Response getResponseWithStringId(String stringId, String type) {
+		if (stringId == null || type == null) {
 			return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "The method delete is not available without the plugin id");
 		}
 		else {
 			try {
 				long id = Long.parseLong(stringId);
-				PluginInfo pluginInfo = IotHubDataAccess.getInstance().deletePlugin(id);
-				if (pluginInfo == null) {
-					return getResponseKo(STATUS_BAD_REQUEST, "Could not delete the plugin with id " + id);
+				if (PluginRequestHandler.ENABLER.equals(type)) {
+					PluginInfo pluginInfo = IotHubDataAccess.getInstance().deletePlugin(id);
+					if (pluginInfo == null) {
+						return getResponseKo(STATUS_BAD_REQUEST, "Could not delete the plugin with id " + id);
+					}
+					else {
+						File file = new File(pluginInfo.getFilename());
+						if (file.exists()) {
+							file.delete();
+						}
+						PluginManager.getInstance().removeAllPluginsForPluginInfo(pluginInfo);
+						return getResponseOk(pluginInfo.toJSON().toString());
+					}
+				}
+				else if (PluginRequestHandler.SERVICE.equals(type)) {
+					ServiceInfo serviceInfo = IotHubDataAccess.getInstance().deleteServiceInfo(id);
+					if (serviceInfo == null) {
+						return getResponseKo(STATUS_BAD_REQUEST, "Could not delete the plugin with id " + id);
+					}
+					else {
+						File file = new File(serviceInfo.getFilename());
+						if (file.exists()) {
+							file.delete();
+						}
+						ServiceManager.getInstance().removeAllServicesForServiceInfo(serviceInfo);
+						return getResponseOk(serviceInfo.toJSON().toString());
+					}
 				}
 				else {
-					File file = new File(pluginInfo.getFilename());
-					if (file.exists()) {
-						file.delete();
-					}
-					PluginManager.getInstance().removeAllPluginsForPluginInfo(pluginInfo);
-					return getResponseOk(pluginInfo.toJSON().toString());
+					return getResponseKo(STATUS_BAD_REQUEST, "Unknow plugin type");
 				}
 			} catch (JSONException | NumberFormatException e) {
 				return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "The method delete is not available without the plugin id, and plugin id should be a long");
@@ -84,15 +105,15 @@ public class PluginDeleteRequestHandler extends IotHubApiRequestHandler {
 	@Override
 	public Response handleRequest(IotHubRequest uri) {
 		// To delete a plugin, there should be just the name
-		
+
 		if (uri.getIdentifiers().size() > 1) {
 			return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "The method delete is not available without the plugin id");
 		}
 		else if (uri.getIdentifiers().size() == 0) {
-			return getResponseWithStringId(uri.getOptions().get("id"));
+			return getResponseWithStringId(uri.getOptions().get("id"), uri.getOptions().get("type"));
 		}
 		else {
-			return getResponseWithStringId(uri.getIdentifiers().get(0));
+			return getResponseWithStringId(uri.getIdentifiers().get(0), uri.getOptions().get("type"));
 		}
 	}
 

@@ -27,5 +27,5 @@ public interface RunnableServiceHelper {
 
 	public RunnableService createService(Service service);
 	public void checkService(String serviceName, File file) throws ServiceException;
-	
+	public void checkService(String serviceName, String script) throws ServiceException;
 }

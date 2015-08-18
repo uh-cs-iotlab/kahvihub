@@ -39,6 +39,9 @@ import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo.Type;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginException;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
+import fi.helsinki.cs.iot.hub.model.service.ServiceException;
+import fi.helsinki.cs.iot.hub.model.service.ServiceInfo;
+import fi.helsinki.cs.iot.hub.model.service.ServiceManager;
 import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
@@ -98,43 +101,66 @@ public class PluginPostRequestHandler extends IotHubApiRequestHandler {
 				JSONObject jdata = new JSONObject(bodyData);
 				String pluginName = jdata.getString("plugin");
 				String packageName = jdata.has("package") ? jdata.getString("package") : null;
+				boolean isService = jdata.optBoolean("isService") || PluginRequestHandler.SERVICE.equals(request.getOptions().get("type"));
+				
 				Type type = BasicPluginInfo.Type.valueOf(jdata.getString("type"));
 				
 				PluginInfo pluginInfo = null;
+				ServiceInfo serviceInfo = null;
 				
 				if (type == Type.NATIVE) {
 					File file = ScriptUtils.decodeBase64ToFile(jdata.getString("file"));
-					PluginManager.getInstance().checkNativePlugin(pluginName, packageName, file);
-					int id = IotHubDataAccess.getInstance().getPlugins().size();
-					Path pathInLibFolder = Paths.get(this.libdir.toString(), String.format("native-plugin-%s-%d.jar", pluginName, id));
+					if (!isService) {
+						PluginManager.getInstance().checkNativePlugin(pluginName, packageName, file);
+					}
+					else {
+						return getResponseKo(STATUS_NOT_YET_IMPLEMENTED, "The native service feature is not yet implemented");
+					}
+					int id = (!isService) ? IotHubDataAccess.getInstance().getPlugins().size() : IotHubDataAccess.getInstance().getServiceInfos().size();
+					Path pathInLibFolder = Paths.get(this.libdir.toString(), String.format("native-%s-%s-%d.jar", (!isService) ? "plugin" : "service", pluginName, id));
 					Path newPath = Files.copy(Paths.get(file.getAbsolutePath()), pathInLibFolder);
 					if (newPath != null) {
-						pluginInfo = IotHubDataAccess.getInstance().addNativePlugin(pluginName, packageName, newPath.toFile());
+						if (!isService) {
+							pluginInfo = IotHubDataAccess.getInstance().addNativePlugin(pluginName, packageName, newPath.toFile());
+						}
+						else {
+							return getResponseKo(STATUS_NOT_YET_IMPLEMENTED, "The native service feature is not yet implemented");
+							//serviceInfo = IotHubDataAccess.getInstance().addServiceInfo(name, file)
+						}
 					}
 				}
 				else {
 					String script = ScriptUtils.decodeBase64ToString(jdata.getString("file"));
-					PluginManager.getInstance().checkJavacriptPlugin(pluginName, script);
-					int id = IotHubDataAccess.getInstance().getPlugins().size();
+					if (!isService) {
+						PluginManager.getInstance().checkJavacriptPlugin(pluginName, script);
+					}
+					else {
+						ServiceManager.getInstance().checkService(pluginName, script);
+					}
+					int id = (!isService) ? IotHubDataAccess.getInstance().getPlugins().size() : IotHubDataAccess.getInstance().getServiceInfos().size();
 					File ld = this.libdir.toFile();
 					if (!(ld.exists() && ld.isDirectory())) {
 						System.err.println(ld.getAbsolutePath());
 					}
-					Path pathInLibFolder = Paths.get(this.libdir.toString(), String.format("native-plugin-%s-%d.js", pluginName, id));
+					Path pathInLibFolder = Paths.get(this.libdir.toString(), String.format("javscript-%s-%s-%d.js", (!isService) ? "plugin" : "service", pluginName, id));
 					InputStream stream = new ByteArrayInputStream(script.getBytes(StandardCharsets.UTF_8));
 					long written = Files.copy(stream, pathInLibFolder);
 					if (written > 0) {
-						pluginInfo = IotHubDataAccess.getInstance().addJavascriptPlugin(pluginName, packageName, pathInLibFolder.toFile());
+						if (!isService) {
+							pluginInfo = IotHubDataAccess.getInstance().addJavascriptPlugin(pluginName, packageName, pathInLibFolder.toFile());
+						}
+						else {
+							serviceInfo = IotHubDataAccess.getInstance().addServiceInfo(pluginName, pathInLibFolder.toFile());
+						}
 					}
 				}
 				
-				if (pluginInfo == null) {
-					return getResponseKo(STATUS_BAD_REQUEST, "I could not add the plugin to the db");
+				if (pluginInfo == null && serviceInfo == null) {
+					return getResponseKo(STATUS_BAD_REQUEST, String.format("I could not add the %s to the db", (!isService) ? "plugin" : "service"));
 				}
 				else {
-					return getResponseOk(pluginInfo.toJSON().toString());
+					return getResponseOk((!isService) ? pluginInfo.toJSON().toString() : serviceInfo.toJSON().toString());
 				}
-				
 			} catch (JSONException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -147,6 +173,9 @@ public class PluginPostRequestHandler extends IotHubApiRequestHandler {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 				return getResponseKo(STATUS_BAD_REQUEST, "The plugin is incorrect " + e.getMessage());
+			} catch (ServiceException e) {
+				// TODO Auto-generated catch block
+				return getResponseKo(STATUS_BAD_REQUEST, "The service is incorrect " + e.getMessage());
 			}
 		}
 

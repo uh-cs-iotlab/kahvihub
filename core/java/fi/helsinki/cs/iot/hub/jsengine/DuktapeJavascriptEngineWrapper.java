@@ -62,6 +62,7 @@ public class DuktapeJavascriptEngineWrapper {
 	private HashMap<Integer, TcpSocket> sockets;
 	private JavascriptedIotHubCode javascriptedIotHubCode;
 	private int lastSocketId;
+	private final int modes;
 
 	// load the built libraries
 	static {
@@ -69,14 +70,15 @@ public class DuktapeJavascriptEngineWrapper {
 	}
 
 	public DuktapeJavascriptEngineWrapper() {
-		this(null);
+		this(null, 0);
 	}
 
-	public DuktapeJavascriptEngineWrapper(JavascriptedIotHubCode javascriptConfigurable) {
+	public DuktapeJavascriptEngineWrapper(JavascriptedIotHubCode javascriptConfigurable, int modes) {
 		this.javascriptedIotHubCode = javascriptConfigurable;
 		this.needToStopAllEvents = false;
 		this.sockets = new HashMap<>();
 		this.lastSocketId = 1000;
+		this.modes = modes;
 	}
 
 	public boolean needToStopAllEvents() {
@@ -89,17 +91,17 @@ public class DuktapeJavascriptEngineWrapper {
 
 	public boolean hasTcpSockets() {
 		return javascriptedIotHubCode != null && 
-				(javascriptedIotHubCode.getJsEngineModes() & TCP_SOCKET) == TCP_SOCKET;
+				(modes & TCP_SOCKET) == TCP_SOCKET;
 	}
 
 	public boolean hasHttpRequest() {
 		return javascriptedIotHubCode != null && 
-				(javascriptedIotHubCode.getJsEngineModes() & HTTP_REQUEST) == HTTP_REQUEST;
+				(modes & HTTP_REQUEST) == HTTP_REQUEST;
 	}
 
 	public boolean hasEventLoop() {
 		return javascriptedIotHubCode != null &&
-				(javascriptedIotHubCode.getJsEngineModes() & EVENT_LOOP) == EVENT_LOOP;
+				(modes & EVENT_LOOP) == EVENT_LOOP;
 	}
 
 	public native String runScript(String script) throws JavascriptEngineException;

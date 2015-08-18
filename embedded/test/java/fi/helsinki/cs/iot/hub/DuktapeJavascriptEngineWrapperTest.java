@@ -72,7 +72,7 @@ public class DuktapeJavascriptEngineWrapperTest {
 		jsScript += "if (xhr.readyState == 4 && xhr.status == 200) {";
 		jsScript += "res = xhr.responseText;}};";
 		jsScript += "xhr.send(null); res;";
-		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(DuktapeJavascriptEngineWrapper.HTTP_REQUEST, jsScript);
+		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(jsScript);
 		TemporaryServer ts = new TemporaryServer();
 		try {
 			ts.start();
@@ -83,7 +83,7 @@ public class DuktapeJavascriptEngineWrapperTest {
 			} catch (JavascriptEngineException e) {
 				assertEquals("Script error: ReferenceError: identifier 'XMLHttpRequest' undefined", e.getMessage().trim());
 			}
-			wrapper =  new DuktapeJavascriptEngineWrapper(simpleCode);
+			wrapper =  new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.HTTP_REQUEST);
 			String response = null;
 			try {
 				response = wrapper.runScript(simpleCode.getScript());
@@ -136,9 +136,9 @@ public class DuktapeJavascriptEngineWrapperTest {
 		jsScript += "sc.onsocketerror = function(msg) { print('Error:' + msg); };";
 		jsScript += String.format("sc.connect('%s', %d);", "127.0.0.1", port);
 		jsScript += "sc.send('I want to send this message');";
-		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(DuktapeJavascriptEngineWrapper.TCP_SOCKET, jsScript);
+		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(jsScript);
 		DuktapeJavascriptEngineWrapper dtw = 
-				new DuktapeJavascriptEngineWrapper(simpleCode);
+				new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
 		try {
 			dtw.runScript(simpleCode.getScript());
 		} catch (JavascriptEngineException e) {

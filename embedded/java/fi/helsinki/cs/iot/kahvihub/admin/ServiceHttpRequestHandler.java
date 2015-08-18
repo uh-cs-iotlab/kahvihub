@@ -37,6 +37,7 @@ import fi.helsinki.cs.iot.hub.model.service.ServiceException;
 import fi.helsinki.cs.iot.hub.model.service.ServiceInfo;
 import fi.helsinki.cs.iot.hub.model.service.ServiceManager;
 import fi.helsinki.cs.iot.hub.utils.Log;
+import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
@@ -119,7 +120,7 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 		}
 		//TODO I would not to parse the file as a proper javascript service
 		try {
-			ServiceManager.getInstance().checkService(name, file);
+			ServiceManager.getInstance().checkService(name, ScriptUtils.convertFileToString(file));
 		} catch (ServiceException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -133,11 +134,11 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 				Service service = IotHubDataAccess.getInstance().addService(serviceInfo, name, metadata, 
 						config != null ? config.toString() : null, bootAtStartup);
 				if (service != null) {
-					return getJsonResponseOk(service.getJsonDescription());
+					return getJsonResponseOk(service.toJSON().toString());
 				}
 				else {
 					Log.e(TAG, "Could not make the service");
-					IotHubDataAccess.getInstance().deleteServiceInfo(name);
+					IotHubDataAccess.getInstance().deleteServiceInfo(serviceInfo.getId());
 				}
 			}
 			else {
@@ -179,7 +180,7 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 			JSONArray jArray = new JSONArray();
 			for (Service service : services) {
 				try {
-					JSONObject jDescription = new JSONObject(service.getJsonDescription());
+					JSONObject jDescription = new JSONObject(service.toJSON().toString());
 					jArray.put(jDescription);
 				} catch (JSONException e) {
 					// TODO Auto-generated catch block
@@ -193,7 +194,13 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 			String serviceName = getServiceName(uri);
 			Service service = IotHubDataAccess.getInstance().getService(serviceName);
 			if (service != null) {
-				return getJsonResponseOk(service.getJsonDescription());
+				try {
+					return getJsonResponseOk(service.toJSON().toString());
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return getJsonResponseKo("BAD_REQUEST", "The service " + serviceName + " could not be put to JSON");
+				}
 			}
 			else {
 				return getJsonResponseKo("BAD_REQUEST", "The service " + serviceName + " could not be found");
@@ -304,7 +311,7 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 								name, metadata, config, bootAtStartup);
 						if (updatedService != null &&
 								ServiceManager.getInstance().updateRunnableService(service, updatedService) != null) {
-							return getJsonResponseOk(updatedService.getJsonDescription());	
+							return getJsonResponseOk(updatedService.toJSON().toString());	
 						}
 						else {
 							return getJsonResponseKo("BAD_REQUEST", "The service " + serviceName + " could not be updated");
@@ -344,11 +351,20 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 		if (numberOfIdentifiers == 1) {
 			//Case where I want to delete the service
 			String serviceName = getServiceName(uri);
-			Service service = IotHubDataAccess.getInstance().deleteService(serviceName);
+			Service service = IotHubDataAccess.getInstance().getService(serviceName);
 			if (service != null) {
-				String serviceInfoName = service.getServiceInfo().getName();
-				IotHubDataAccess.getInstance().deleteServiceInfo(serviceInfoName);
-				return getJsonResponseOk(service.getJsonDescription());
+				service = IotHubDataAccess.getInstance().deleteService(service);
+				if (service != null) {
+					long id = service.getServiceInfo().getId();
+					IotHubDataAccess.getInstance().deleteServiceInfo(id);
+					try {
+						return getJsonResponseOk(service.toJSON().toString());
+					} catch (JSONException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						return getJsonResponseKo("BAD_REQUEST", "The service could not be put to JSON");
+					}
+				}
 			}
 		}
 		return getJsonResponseKo("BAD_REQUEST", "Nothing was deleted");

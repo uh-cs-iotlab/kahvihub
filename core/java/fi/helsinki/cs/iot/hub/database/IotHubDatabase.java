@@ -91,13 +91,13 @@ public interface IotHubDatabase {
 	public List<ServiceInfo> getServiceInfos();
 	public ServiceInfo getServiceInfo(long id);
 	public ServiceInfo addServiceInfo(String name, File file);
-	public ServiceInfo deleteServiceInfo(String name);
+	public ServiceInfo deleteServiceInfo(long id);
 	
 	public List<Service> getServices();
 	public Service getService(long id);
 	public Service getService(String name);
 	public Service addService(ServiceInfo serviceInfo, String name, String metadata, String config, boolean bootAtStartup);
-	public Service deleteService(String name);
+	public Service deleteService(Service service);
 	public Service updateService(Service service, String name, String metadata, String config, boolean bootAtStartup);
 	
 }

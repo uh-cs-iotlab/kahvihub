@@ -27,6 +27,7 @@ import fi.helsinki.cs.iot.hub.api.handlers.basic.IotHubApiRequestHandler;
 import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
+import fi.helsinki.cs.iot.hub.model.service.ServiceInfo;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
@@ -54,19 +55,33 @@ public class PluginGetRequestHandler extends IotHubApiRequestHandler {
 		return methods;
 	}
 
-	private Response getResponseWithStringId(String stringId) {
-		if (stringId == null) {
-			return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "The method get is not available without the plugin id");
+	private Response getResponseWithStringId(String stringId, String type) {
+		if (stringId == null || type == null) {
+			return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "The method get is not available without the plugin id and the type");
 		}
 		else {
 			try {
 				long id = Long.parseLong(stringId);
-				PluginInfo pluginInfo = IotHubDataAccess.getInstance().getPluginInfo(id);
-				if (pluginInfo == null) {
-					return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "Could not get the plugin with id " + id);
+				if (PluginRequestHandler.ENABLER.equals(type)) {
+					PluginInfo pluginInfo = IotHubDataAccess.getInstance().getPluginInfo(id);
+					if (pluginInfo == null) {
+						return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "Could not get the plugin with id " + id);
+					}
+					else {
+						return getResponseOk(pluginInfo.toJSON().toString());
+					}
+				}
+				else if (PluginRequestHandler.SERVICE.equals(type)) {
+					ServiceInfo serviceInfo = IotHubDataAccess.getInstance().getServiceInfo(id);
+					if (serviceInfo == null) {
+						return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "Could not get the plugin with id " + id);
+					}
+					else {
+						return getResponseOk(serviceInfo.toJSON().toString());
+					}
 				}
 				else {
-					return getResponseOk(pluginInfo.toJSON().toString());
+					return getResponseKo(STATUS_BAD_REQUEST, "Type of the plugin unknown");
 				}
 			} catch (JSONException | NumberFormatException e) {
 				return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "The method get is not available without the plugin id, and plugin id should be a long");
@@ -83,25 +98,42 @@ public class PluginGetRequestHandler extends IotHubApiRequestHandler {
 		// Case where we just want to list the plugins
 		if (uri.getIdentifiers().size() == 0) {
 			String stringId = uri.getOptions().get("id");
+			String type = uri.getOptions().get("type");
 			if (stringId == null) {
-				List<PluginInfo> plugins = IotHubDataAccess.getInstance().getPlugins();
 				JSONArray jArray = new JSONArray();
-				for (PluginInfo plugin : plugins) {
-					try {
-						jArray.put(plugin.toJSON());
-					} catch (JSONException e) {
-						System.err.println(e);
-						return getResponseKo(STATUS_IO_ERROR, e.getMessage());
+				if (type == null || PluginRequestHandler.ENABLER.equals(type)) {
+					List<PluginInfo> plugins = IotHubDataAccess.getInstance().getPlugins();
+					for (PluginInfo plugin : plugins) {
+						try {
+							jArray.put(plugin.toJSON());
+						} catch (JSONException e) {
+							System.err.println(e);
+							return getResponseKo(STATUS_IO_ERROR, e.getMessage());
+						}
 					}
+				}
+				if (type == null || PluginRequestHandler.SERVICE.equals(type)) {
+					List<ServiceInfo> services = IotHubDataAccess.getInstance().getServiceInfos();
+					for (ServiceInfo serviceInfo : services) {
+						try {
+							jArray.put(serviceInfo.toJSON());
+						} catch (JSONException e) {
+							System.err.println(e);
+							return getResponseKo(STATUS_IO_ERROR, e.getMessage());
+						}
+					}
+				}
+				if (type != null && (!PluginRequestHandler.ENABLER.equals(type) || !PluginRequestHandler.SERVICE.equals(type))) {
+					return getResponseKo(STATUS_BAD_REQUEST, "The type of plugin is unknown");
 				}
 				return getResponseOk(jArray.toString());
 			}
 			else {
-				return getResponseWithStringId(stringId);
+				return getResponseWithStringId(stringId, type);
 			}
 		}
 		else if (uri.getIdentifiers().size() == 1) {
-			return getResponseWithStringId(uri.getIdentifiers().get(0));
+			return getResponseWithStringId(uri.getIdentifiers().get(0), uri.getOptions().get("type"));
 		}
 		else {
 			return getResponseKo(STATUS_NOT_YET_IMPLEMENTED, STATUS_NOT_YET_IMPLEMENTED);

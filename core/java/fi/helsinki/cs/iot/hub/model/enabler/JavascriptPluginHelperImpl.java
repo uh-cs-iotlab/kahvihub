@@ -53,6 +53,19 @@ public class JavascriptPluginHelperImpl implements JavascriptPluginHelper {
 		JavascriptPlugin plugin = new JavascriptPlugin(pluginName, script, mode);
 		return plugin;
 	}
+	
+	@Override
+	public Plugin createPluginWithEnabler(Enabler enabler) throws PluginException {
+		String pluginName = enabler.getPluginInfo().getServiceName();
+		File file = Paths.get(libdir.toAbsolutePath().toString(), enabler.getPluginInfo().getFilename()).toFile();
+		String script = ScriptUtils.convertFileToString(file);
+		//TODO fix that
+		int mode = DuktapeJavascriptEngineWrapper.EVENT_LOOP |
+				DuktapeJavascriptEngineWrapper.HTTP_REQUEST |
+				DuktapeJavascriptEngineWrapper.TCP_SOCKET;
+		JavascriptPlugin plugin = new JavascriptPlugin(enabler, pluginName, script, mode);
+		return plugin;
+	}
 
 	@Override
 	public void checkPlugin(String pluginName, String script)
@@ -74,5 +87,7 @@ public class JavascriptPluginHelperImpl implements JavascriptPluginHelper {
 		String script = ScriptUtils.convertFileToString(file);
 		checkPlugin(pluginName, script);
 	}
+
+	
 
 }

@@ -79,10 +79,9 @@ public class PluginManager {
 				}
 			}
 			else if (enabler.getPluginInfo().isJavascript()) {
-				String pluginName = enabler.getPluginInfo().getServiceName();
 				try {
 					//javascriptPluginHelper.checkPlugin(pluginName, scriptFile);
-					plugin = javascriptPluginHelper.createPluginWithFilename(pluginName, enabler.getPluginInfo().getFilename());
+					plugin = javascriptPluginHelper.createPluginWithEnabler(enabler);
 				} catch (PluginException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

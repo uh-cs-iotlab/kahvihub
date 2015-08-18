@@ -23,20 +23,13 @@ package fi.helsinki.cs.iot.hub.jsengine;
  */
 public class SimpleJavascriptedIotHubCode implements JavascriptedIotHubCode {
 
-	private int mode;
 	private String script;
 	
 	
-	public SimpleJavascriptedIotHubCode(int mode, String script) {
-		this.mode = mode;
+	public SimpleJavascriptedIotHubCode(String script) {
 		this.script = script;
 	}
 
-
-	@Override
-	public int getJsEngineModes() {
-		return mode;
-	}
 	
 	public String getScript() {
 		return script;

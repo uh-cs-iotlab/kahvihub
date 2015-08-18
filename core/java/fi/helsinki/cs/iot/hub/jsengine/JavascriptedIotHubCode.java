@@ -23,7 +23,6 @@ package fi.helsinki.cs.iot.hub.jsengine;
  */
 public interface JavascriptedIotHubCode {
 
-	int getJsEngineModes();
 	boolean configure(String configuration) throws JavascriptEngineException;
 	boolean configurePersistant(String configuration);
 

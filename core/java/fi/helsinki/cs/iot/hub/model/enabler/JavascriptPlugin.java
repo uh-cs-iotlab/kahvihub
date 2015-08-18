@@ -19,6 +19,7 @@ package fi.helsinki.cs.iot.hub.model.enabler;
 
 import java.util.Map;
 
+import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptEngineException;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptedIotHubCode;
@@ -36,20 +37,22 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	private final String jname;
 	private final String jscript;
 	private String configuration;
-	private final int jsEngineModes;
+	private DuktapeJavascriptEngineWrapper wrapper;
+	private Enabler enabler;
 
 	public JavascriptPlugin(String jname, String jscript, int jsEngineModes) {
+		this(null, jname, jscript, jsEngineModes);
+	}
+	
+	public JavascriptPlugin(Enabler enabler, String jname, String jscript, int jsEngineModes) {
 		this.needToStop = false;
 		this.jname = jname;
 		this.jscript = jscript;
 		this.thread = null;
-		this.jsEngineModes = jsEngineModes;
+		this.wrapper = new DuktapeJavascriptEngineWrapper(this, jsEngineModes);
+		this.enabler = enabler;
 	}
 	
-	public int getJsEngineModes() {
-		return jsEngineModes;
-	}
-
 	/* (non-Javadoc)
 	 * @see fi.helsinki.cs.iot.hub.model.enabler.Plugin#needConfiguration()
 	 */
@@ -102,6 +105,15 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	@Override
 	public boolean configurePersistant(String configuration) {
 		this.configuration = configuration;
+		if (this.enabler != null) {
+			Enabler e = IotHubDataAccess.getInstance().updateEnabler(enabler, configuration);
+			if (e == null) {
+				System.err.println("I could not save the persistant configuration to the db");
+			}
+			else {
+				enabler = e;
+			}
+		}
 		return true;
 	}
 
@@ -118,10 +130,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public boolean isSupported(FeatureDescription featureDescription) throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper(this);
 		try {
-			return jsEngine.isPluginFeatureSupported(jname, jscript, configuration, featureDescription.getName());
+			return wrapper.isPluginFeatureSupported(jname, jscript, configuration, featureDescription.getName());
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -132,10 +142,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public boolean isAvailable(FeatureDescription featureDescription) throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper(this);
 		try {
-			return jsEngine.isPluginFeatureAvailable(jname, jscript, configuration, featureDescription.getName());
+			return wrapper.isPluginFeatureAvailable(jname, jscript, configuration, featureDescription.getName());
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -146,10 +154,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public boolean isReadable(FeatureDescription featureDescription) throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper(this);
 		try {
-			return jsEngine.isPluginFeatureReadable(jname, jscript, configuration, featureDescription.getName());
+			return wrapper.isPluginFeatureReadable(jname, jscript, configuration, featureDescription.getName());
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -160,10 +166,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public boolean isWritable(FeatureDescription featureDescription) throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper(this);
 		try {
-			return jsEngine.isPluginFeatureWritable(jname, jscript, configuration, featureDescription.getName());
+			return wrapper.isPluginFeatureWritable(jname, jscript, configuration, featureDescription.getName());
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -192,10 +196,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public int getNumberOfFeatures() throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper(this);
 		try {
-			return jsEngine.getPluginNumberOfFeatures(jname, jscript, configuration);
+			return wrapper.getPluginNumberOfFeatures(jname, jscript, configuration);
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -206,10 +208,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public FeatureDescription getFeatureDescription(int index) throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper(this);
 		try {
-			return jsEngine.getPluginFeatureDescription(jname, jscript, configuration, index);
+			return wrapper.getPluginFeatureDescription(jname, jscript, configuration, index);
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -220,10 +220,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public String getValue(FeatureDescription featureDescription) throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper(this);
 		try {
-			return jsEngine.getPluginFeatureValue(jname, jscript, configuration, featureDescription.getName());
+			return wrapper.getPluginFeatureValue(jname, jscript, configuration, featureDescription.getName());
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -234,12 +232,10 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public boolean postValue(FeatureDescription featureDescription, String data) throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper(this);
 		try {
 			//TODO maybe the post plugin feature should send some result back
 			//TODO I need to escape the double quotes here and make sure that the type is the same than the fd
-			return jsEngine.postPluginFeatureValue(jname, jscript, configuration, featureDescription.getName(), data);
+			return wrapper.postPluginFeatureValue(jname, jscript, configuration, featureDescription.getName(), data);
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -270,8 +266,7 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 
 	@Override
 	public String toString() {
-		return "JavascriptPlugin [jname=" + jname + ", jscript=" + jscript + ", configuration=" + configuration
-				+ ", jsEngineModes=" + jsEngineModes + "]";
+		return "JavascriptPlugin [jname=" + jname + ", jscript=" + jscript + ", configuration=" + configuration + "]";
 	}
 
 	

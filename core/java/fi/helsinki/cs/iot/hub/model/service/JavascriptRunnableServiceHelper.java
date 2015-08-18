@@ -26,7 +26,7 @@ import java.util.List;
 
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptEngineException;
-import fi.helsinki.cs.iot.hub.utils.Log;
+import fi.helsinki.cs.iot.hub.model.enabler.PluginException;
 import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
 
 /**
@@ -35,7 +35,6 @@ import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
  */
 public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 
-	private static final String TAG = "JavascriptRunnableServiceHelper";
 	//private static final String TAG = "JavascriptRunnableServiceHelper";
 	private List<String> initFiles;
 	private String serviceFolder;
@@ -65,24 +64,23 @@ public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 
 	@Override
 	public void checkService(String serviceName, File file) throws ServiceException {
-		DuktapeJavascriptEngineWrapper jsEngineWrapper = 
+		String script = ScriptUtils.convertFileToString(file);
+		checkService(serviceName, script);
+	}
+
+	@Override
+	public void checkService(String serviceName, String script) throws ServiceException {
+		DuktapeJavascriptEngineWrapper wrapper = 
 				new DuktapeJavascriptEngineWrapper();
 		try {
-			InputStream inputStream = new FileInputStream(file);
-			String script = ScriptUtils.convertStreamToString(inputStream);
-			inputStream.close();
-			if (jsEngineWrapper.checkService(serviceName, script)) {
-				Log.i(TAG, "I have checked this script");
+			boolean checked = wrapper.checkService(serviceName, script);
+			if (!checked) {
+				throw PluginException.newJavascriptException("Javascript plugin has not passed the checkup");
 			}
-			else {
-				throw new ServiceException("The script has not pass the checks and should have raised an exception");
-			}
-		}
-		catch (IOException e) {
-			throw new ServiceException(e.getMessage());
 		} catch (JavascriptEngineException e) {
-			throw new ServiceException(e.getTag() + ": " + e.getMessage());
+			throw new ServiceException(e.getMessage());
 		}
+		
 	}
 
 }

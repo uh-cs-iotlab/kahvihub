@@ -468,9 +468,9 @@ public class IotHubDataAccess {
 		}
 	}
 
-	public ServiceInfo deleteServiceInfo(String name) {
+	public ServiceInfo deleteServiceInfo(long id) {
 		if (database != null && database.isOpen()) {
-			return database.deleteServiceInfo(name);
+			return database.deleteServiceInfo(id);
 		}
 		else {
 			Log.e(TAG, "The database was neither set nor opened");
@@ -519,9 +519,9 @@ public class IotHubDataAccess {
 		}
 	}
 
-	public Service deleteService(String name) {
+	public Service deleteService(Service service) {
 		if (database != null && database.isOpen()) {
-			return database.deleteService(name);
+			return database.deleteService(service);
 		}
 		else {
 			Log.e(TAG, "The database was neither set nor opened");
@@ -540,7 +540,6 @@ public class IotHubDataAccess {
 			return null;
 		}
 	}
-
 
 }
 

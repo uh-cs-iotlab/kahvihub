@@ -90,7 +90,7 @@ public class JavascriptRunnableService implements RunnableService {
 	@Override
 	public boolean needConfiguration() throws ServiceException {
 		DuktapeJavascriptEngineWrapper jsEngineWrapper = 
-				new DuktapeJavascriptEngineWrapper(this);
+				new DuktapeJavascriptEngineWrapper(this, mode);
 		try {
 			return jsEngineWrapper.serviceNeedConfiguration(service.getServiceInfo().getName(), script);
 		}
@@ -123,7 +123,7 @@ public class JavascriptRunnableService implements RunnableService {
 		thread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-				runningJsEngine = new DuktapeJavascriptEngineWrapper(jsrservice);
+				runningJsEngine = new DuktapeJavascriptEngineWrapper(jsrservice, mode);
 				try {
 					runningJsEngine.run(
 							service.getServiceInfo().getName(), script, service.getConfig());
@@ -151,11 +151,6 @@ public class JavascriptRunnableService implements RunnableService {
 	@Override
 	public void setService(Service service) {
 		this.service = service;
-	}
-
-	@Override
-	public int getJsEngineModes() {
-		return this.mode;
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * fi.helsinki.cs.iot.hub.api.handlers.plugins.PluginPostRequestHandler
+ * fi.helsinki.cs.iot.hub.api.handlers.services.ServiceRequestHandler
  * v0.1
  * 2015
  *
@@ -15,9 +15,8 @@
  * See the License for the specific language governing permissions 
  * and limitations under the License.
  */
-package fi.helsinki.cs.iot.hub.api.handlers.plugins;
+package fi.helsinki.cs.iot.hub.api.handlers.services;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,18 +31,17 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
  * @author mineraud
  *
  */
-public class PluginRequestHandler extends IotHubApiRequestHandler {
-	
+public class ServiceRequestHandler extends IotHubApiRequestHandler {
+
 	private Map<Method, IotHubApiRequestHandler> subHandlers;
 	private List<Method> supportedMethods;
-	protected static final String SERVICE = "service";
-	protected static final String ENABLER = "enabler";
 
-	public PluginRequestHandler(Path libdir) {
+	public ServiceRequestHandler() {
 		this.subHandlers = new HashMap<>();
-		this.subHandlers.put(Method.GET, new PluginGetRequestHandler());
-		this.subHandlers.put(Method.POST, new PluginPostRequestHandler(libdir));
-		this.subHandlers.put(Method.DELETE, new PluginDeleteRequestHandler());
+		this.subHandlers.put(Method.GET, new ServiceGetRequestHandler());
+		this.subHandlers.put(Method.POST, new ServicePostRequestHandler());
+		this.subHandlers.put(Method.PUT, new ServicePutRequestHandler());
+		this.subHandlers.put(Method.DELETE, new ServiceDeleteRequestHandler());
 		this.supportedMethods = new ArrayList<>(subHandlers.keySet());
 	}
 

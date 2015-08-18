@@ -17,10 +17,11 @@
  */
 package fi.helsinki.cs.iot.hub.model.service;
 
-import java.io.File;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
+import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.utils.Log;
 
 /**
@@ -28,7 +29,7 @@ import fi.helsinki.cs.iot.hub.utils.Log;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  */
 public class ServiceManager {
-	
+
 	private static final String TAG = "ServiceManager";
 	private static ServiceManager instance = null;
 	private Map<String, RunnableService> services;
@@ -45,7 +46,7 @@ public class ServiceManager {
 		}
 		return instance;
 	}
-	
+
 	public void setServiceHelper(RunnableServiceHelper serviceHelper) {
 		if (serviceHelper == null) {
 			Log.w(TAG, "Be careful, you are unsetting the service helper");
@@ -76,7 +77,7 @@ public class ServiceManager {
 		}
 		return runnableService;
 	}
-	
+
 	public RunnableService updateRunnableService(Service oldService, Service newService) {
 		RunnableService runnableService = services.get(oldService.getName());
 		if (runnableService == null) {
@@ -113,15 +114,43 @@ public class ServiceManager {
 			return runnableService;
 		}
 	}
-	
-	public void checkService(String serviceName, File file) throws ServiceException {
+
+	public void checkService(String serviceName, String script) throws ServiceException {
 		if (serviceHelper != null) {
-			Log.i(TAG, "Checking service " + serviceName + " for file " + file.getAbsolutePath() );
-			serviceHelper.checkService(serviceName, file);
+			Log.i(TAG, "Checking service " + serviceName);
+			serviceHelper.checkService(serviceName, script);
 		}
 		else {
 			Log.e(TAG, "Cannot check the native plugin if the helper is null");
 		}
 	}
-	
+
+	public void removeAllServices() {
+		for(Iterator<Map.Entry<String, RunnableService>> it = services.entrySet().iterator(); it.hasNext(); ) {
+			Map.Entry<String, RunnableService> entry = it.next();
+			entry.getValue().stop();
+			it.remove();
+		}
+	}
+
+	public RunnableService removeService(Service service) {
+		RunnableService runnableService = services.get(service.getName());
+		if (runnableService != null) {
+			runnableService.stop();
+		}
+		return services.remove(service.getName());
+
+	}
+
+	public void removeAllServicesForServiceInfo(ServiceInfo serviceInfo) {
+		for(Iterator<Map.Entry<String, RunnableService>> it = services.entrySet().iterator(); it.hasNext(); ) {
+			Map.Entry<String, RunnableService> entry = it.next();
+			Service service = IotHubDataAccess.getInstance().getService(entry.getKey());
+			if (service != null && service.getServiceInfo().equals(serviceInfo)) {
+				entry.getValue().stop();
+				it.remove();
+			}
+		}
+	}
+
 }

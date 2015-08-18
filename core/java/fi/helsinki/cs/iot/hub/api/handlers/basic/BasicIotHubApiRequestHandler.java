@@ -27,7 +27,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import fi.helsinki.cs.iot.hub.api.handlers.enablers.EnablerRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.feeds.FeedRequestHandler;
 import fi.helsinki.cs.iot.hub.api.handlers.plugins.PluginRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.services.ServiceRequestHandler;
 import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.api.request.IotHubRequest.Type;
 import fi.helsinki.cs.iot.hub.model.enabler.JavascriptPluginHelperImpl;
@@ -50,7 +52,7 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 
 	private List<Method> supportedMethods;
 	private Map<Type, IotHubApiRequestHandler> subHandlers;
-	
+
 	public BasicIotHubApiRequestHandler(Path libdir) {
 
 		this.supportedMethods = new ArrayList<>();
@@ -66,11 +68,19 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 		else {
 			Log.w(TAG, "The libdir path is null, this is a bad idea");
 		}
-		
+
 		//Then the enablers
 		this.subHandlers.put(Type.ENABLER, 
-					new EnablerRequestHandler());
-		
+				new EnablerRequestHandler());
+
+		//Then the feeds
+		this.subHandlers.put(Type.FEED, 
+				new FeedRequestHandler());
+
+		//Then the services
+		this.subHandlers.put(Type.SERVICE, 
+				new ServiceRequestHandler());
+
 		//Add the list of supported methods
 		for(IotHubApiRequestHandler handler : subHandlers.values()) {
 			List<Method> methods = handler.getSupportedMethods();
