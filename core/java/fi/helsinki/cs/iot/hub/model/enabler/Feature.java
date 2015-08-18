@@ -17,6 +17,9 @@
  */
 package fi.helsinki.cs.iot.hub.model.enabler;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
 import fi.helsinki.cs.iot.hub.utils.Log;
 
@@ -134,4 +137,17 @@ public class Feature extends FeatureDescription implements Comparable<Feature> {
                 ", isAtomicFeed=" + isAtomicFeed +
                 '}';
     }
+
+	public JSONObject toJSON() throws JSONException {
+		JSONObject json = new JSONObject();
+		json.put("id", id);
+		json.put("name", getName());
+		json.put("type", getType());
+		json.put("isReadable", isReadable());
+		json.put("isWritable", isWritable());
+		json.put("isSupported", isSupported());
+		json.put("isAvailable", isAvailable());
+		json.put("isAtomicFeed", isAtomicFeed);
+		return json;
+	}
 }

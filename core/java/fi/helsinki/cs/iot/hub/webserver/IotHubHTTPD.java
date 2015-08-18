@@ -17,14 +17,14 @@
  */
 package fi.helsinki.cs.iot.hub.webserver;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import fi.helsinki.cs.iot.hub.api.BasicIotHubApiRequestHandler;
-import fi.helsinki.cs.iot.hub.api.HttpRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.BasicIotHubApiRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.HttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.database.IotHubDataHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDatabaseException;
@@ -43,10 +43,10 @@ public class IotHubHTTPD extends NanoHTTPD {
 	private static final String TAG = "IotHubHTTPD";
 	private String host;
 	private int port;
-	private File libdir;
+	private Path libdir;
 	private HttpRequestHandler requestHandler;
 
-	public IotHubHTTPD(int port, File libdir) {
+	public IotHubHTTPD(int port, Path libdir) {
 		super("127.0.0.1", port);
 		this.libdir = libdir;
 		this.requestHandler = new BasicIotHubApiRequestHandler(this.libdir);
@@ -96,7 +96,6 @@ public class IotHubHTTPD extends NanoHTTPD {
 
 	@Override
 	public void stop() {
-		// TODO Auto-generated method stub
 		super.stop();
 		try {
 			IotHubDataAccess.getInstance().close();
@@ -104,7 +103,7 @@ public class IotHubHTTPD extends NanoHTTPD {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		System.out.println("Server stopped");
+		Log.i(TAG, "Server stopped");
 
 	}
 

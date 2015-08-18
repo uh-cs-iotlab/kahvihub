@@ -17,18 +17,17 @@
  */
 package fi.helsinki.cs.iot.hub.model.service;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptEngineException;
 import fi.helsinki.cs.iot.hub.utils.Log;
+import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
 
 /**
  * 
@@ -52,7 +51,7 @@ public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 	public RunnableService createService(Service service) {
 		try {
 			InputStream inputStream = new FileInputStream(serviceFolder + service.getServiceInfo().getFilename());
-			String script = convertStreamToString(inputStream);
+			String script = ScriptUtils.convertStreamToString(inputStream);
 			inputStream.close();
 			//TODO I have to implement the modes for the services as well
 			JavascriptRunnableService javascriptRunnableService = new JavascriptRunnableService(0, service, script);
@@ -70,7 +69,7 @@ public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 				new DuktapeJavascriptEngineWrapper();
 		try {
 			InputStream inputStream = new FileInputStream(file);
-			String script = convertStreamToString(inputStream);
+			String script = ScriptUtils.convertStreamToString(inputStream);
 			inputStream.close();
 			if (jsEngineWrapper.checkService(serviceName, script)) {
 				Log.i(TAG, "I have checked this script");
@@ -84,31 +83,6 @@ public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 		} catch (JavascriptEngineException e) {
 			throw new ServiceException(e.getTag() + ": " + e.getMessage());
 		}
-	}
-
-	private static String convertStreamToString(InputStream is) {
-		// To convert the InputStream to String we use the BufferedReader.readLine()
-		// method. We iterate until the BufferedReader return null which means
-		// there's no more data to read. Each line will appended to a StringBuilder
-		// and returned as String.
-		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-		StringBuilder sb = new StringBuilder();
-
-		String line = null;
-		try {
-			while ((line = reader.readLine()) != null) {
-				sb.append(line + "\n");
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				is.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		return sb.toString();
 	}
 
 }

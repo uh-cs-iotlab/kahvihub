@@ -20,6 +20,10 @@ package fi.helsinki.cs.iot.hub.model.enabler;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
 
 /**
@@ -45,14 +49,14 @@ public class Enabler {
         this.features = new ArrayList<Feature>();
     }
 
-    public Enabler(long id, String name, String metadata, PluginInfo plugin, String pluginInfoConfig, List<Feature> features) {
-        this.id = id;
-        this.name = name;
-        this.metadata = metadata;
-        this.plugin = plugin;
-        this.pluginInfoConfig = pluginInfoConfig;
-        this.features = features;
-    }
+//    public Enabler(long id, String name, String metadata, PluginInfo plugin, String pluginInfoConfig, List<Feature> features) {
+//        this.id = id;
+//        this.name = name;
+//        this.metadata = metadata;
+//        this.plugin = plugin;
+//        this.pluginInfoConfig = pluginInfoConfig;
+//        this.features = features;
+//    }
 
     public List<Feature> getFeatures() {
         return features;
@@ -107,4 +111,23 @@ public class Enabler {
         }
         return null;
     }
+
+	public Object toJSON() throws JSONException {
+		JSONObject json = new JSONObject();
+		json.put("id", id);
+		json.put("name", name);
+		if (metadata != null) {
+			json.put("metadata", metadata);
+		}
+		if (pluginInfoConfig != null) {
+			json.put("config", pluginInfoConfig);
+		}
+		json.put("plugin", plugin.toJSON());
+		JSONArray array = new JSONArray();
+		for(Feature feature : features) {
+			array.put(feature.toJSON());
+		}
+		json.put("features", array);
+		return json;
+	}
 }

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions 
  * and limitations under the License.
  */
-package fi.helsinki.cs.iot.hub.api;
+package fi.helsinki.cs.iot.hub.api.handlers.services;
 
 import java.io.IOException;
 import java.nio.file.DirectoryIteratorException;
@@ -28,7 +28,8 @@ import java.util.List;
 
 import org.json.JSONArray;
 
-import fi.helsinki.cs.iot.hub.api.uri.IotHubUri;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.IotHubApiRequestHandler;
+import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
@@ -38,20 +39,20 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  *
  */
-public class LibraryGetRequestHandler extends IoTHubApiRequestHandler {
+public class ServiceGetRequestHandler extends IotHubApiRequestHandler {
 	
 	private static final String TAG = "LibraryGetRequestHandler";
 	private Path dir;
 	private List<Method> methods;
 	
-	public LibraryGetRequestHandler(Path dir) {
+	public ServiceGetRequestHandler(Path dir) {
 		this.dir = dir;
 		this.methods = new ArrayList<>();
 		this.methods.add(Method.GET);	
 	}
 
 	@Override
-	public Response handleRequest(IotHubUri uri) {
+	public Response handleRequest(IotHubRequest uri) {
 		Log.d(TAG, "I got a get request for library");
 		// Case where we just want to list the libraires
 		if (uri.getIdentifiers().size() == 0) {

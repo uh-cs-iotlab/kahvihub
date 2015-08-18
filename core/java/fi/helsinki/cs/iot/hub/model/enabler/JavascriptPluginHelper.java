@@ -29,8 +29,8 @@ public interface JavascriptPluginHelper {
 	 * This method should return a functioning plugin ready to be configured
 	 * @return
 	 */
-	public Plugin createPlugin(String pluginName, File file) throws PluginException;
-	public Plugin createPlugin(String pluginName, String script) throws PluginException;
+	public Plugin createPluginWithFilename(String pluginName, String filename) throws PluginException;
+	public Plugin createPluginWithScript(String pluginName, String script) throws PluginException;
 	public void checkPlugin(String pluginName, File file) throws PluginException;
 	public void checkPlugin(String pluginName, String script) throws PluginException;
 

@@ -1,5 +1,5 @@
 /*
- * fi.helsinki.cs.iot.hub.api.uri.IotHubUri
+ * fi.helsinki.cs.iot.hub.api.request.IotHubRequest
  * v0.1
  * 2015
  *
@@ -15,24 +15,27 @@
  * See the License for the specific language governing permissions 
  * and limitations under the License.
  */
-package fi.helsinki.cs.iot.hub.api.uri;
+package fi.helsinki.cs.iot.hub.api.request;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
+
 /**
  * 
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  *
  */
-public class IotHubUri {
+public class IotHubRequest {
 	
 	public enum Type {
-		APPLICATION, LIBRARY, FEED, PLUGIN, ENABLER, UNKNOWN
+		APPLICATION, SERVICE, FEED, PLUGIN, ENABLER, UNKNOWN
 	}
 	
+	private Method method;
 	private Type type;
 	private List<String> identifiers;
 	private String fullUri;
@@ -40,41 +43,45 @@ public class IotHubUri {
 	private String mimeType;
 	private String bodyData;
 	
-	public IotHubUri (String uri, Map<String, String> options) {
-		this(uri, options, null, null);
+	public IotHubRequest (Method method, String uri, Map<String, String> options) {
+		this(method, uri, options, null, null);
 	}
 	
-	public IotHubUri (String uri, Map<String, String> options, 
+	public IotHubRequest (Method method, String uri, Map<String, String> options, 
 			String mimeType, String bodyData) {
+		this.method = method;
 		this.fullUri = uri;
 		String trimmedUri = null;
-		if (uri != null && uri.startsWith("/feeds/")) {
+		if (uri != null && uri.startsWith("/feeds")) {
 			this.type = Type.FEED;
-			trimmedUri = uri.replaceFirst("/feeds/", "");
+			trimmedUri = uri.replaceFirst("/feeds", "");
 		}
-		else if (uri != null && uri.startsWith("/plugins/")) {
+		else if (uri != null && uri.startsWith("/plugins")) {
 			this.type = Type.PLUGIN;
-			trimmedUri = uri.replaceFirst("/plugins/", "");
+			trimmedUri = uri.replaceFirst("/plugins", "");
 		}
-		else if (uri != null && uri.startsWith("/enablers/")) {
+		else if (uri != null && uri.startsWith("/enablers")) {
 			this.type = Type.ENABLER;
-			trimmedUri = uri.replaceFirst("/enablers/", "");
+			trimmedUri = uri.replaceFirst("/enablers", "");
 		}
-		else if (uri != null && uri.startsWith("/applications/")) {
+		else if (uri != null && uri.startsWith("/applications")) {
 			this.type = Type.APPLICATION;
-			trimmedUri = uri.replaceFirst("/applications/", "");
+			trimmedUri = uri.replaceFirst("/applications", "");
 		}
-		else if (uri != null && uri.startsWith("/libraries/")) {
-			this.type = Type.LIBRARY;
-			trimmedUri = uri.replaceFirst("/libraries/", "");
+		else if (uri != null && uri.startsWith("/services")) {
+			this.type = Type.SERVICE;
+			trimmedUri = uri.replaceFirst("/services", "");
 		}
 		else {
 			this.type = Type.UNKNOWN;
 		}
+		if (trimmedUri != null && trimmedUri.startsWith("/")) {
+			trimmedUri = trimmedUri.substring(1);
+		}
 		this.options = options;
 		if (this.type != Type.UNKNOWN) {
 			identifiers = new ArrayList<>();
-			StringTokenizer st = new StringTokenizer(trimmedUri);
+			StringTokenizer st = new StringTokenizer(trimmedUri, "/");
 			while (st.hasMoreTokens()) {
 				identifiers.add(st.nextToken());
 			}
@@ -104,6 +111,10 @@ public class IotHubUri {
 
 	public String getBodyData() {
 		return bodyData;
+	}
+
+	public Method getMethod() {
+		return method;
 	}
 	
 }

@@ -20,7 +20,7 @@ package fi.helsinki.cs.iot.kahvihub.admin;
 import java.util.List;
 import java.util.Map;
 
-import fi.helsinki.cs.iot.hub.api.HttpRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.HttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
 import fi.helsinki.cs.iot.hub.model.enabler.Feature;

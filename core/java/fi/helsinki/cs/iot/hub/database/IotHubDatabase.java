@@ -55,11 +55,13 @@ public interface IotHubDatabase {
 	public PluginInfo getPluginInfo(long id);
 	public PluginInfo addNativePlugin(String serviceName, String packageName, File file);
 	public PluginInfo addJavascriptPlugin(String serviceName, String packageName, File file);
+	public PluginInfo deletePlugin(long id);
 	
 	/* Enabler functions */
 	public Enabler addEnabler(String name, String metadata, PluginInfo plugin, String pluginInfoConfig);
 	public List<Enabler> getEnablers();
 	public Enabler getEnabler(long id);
+	public Enabler getEnabler(String name);
 	public Enabler updateEnabler(Enabler enabler, String name, String metadata, String pluginInfoConfig);
 	public Enabler deleteEnabler(Enabler enabler);
 	
@@ -67,6 +69,7 @@ public interface IotHubDatabase {
 	public Feature addFeature(Enabler enabler, String name, String type);
 	public Feature updateFeature(Feature feature, String name, String type, boolean isFeed);
 	public Feature getFeature(long id);
+	public List<Feature> deleteFeaturesOfEnabler(Enabler enabler);
 	
 	/* Feed functions */
 	public AtomicFeed addAtomicFeed(String name, String metadata,
@@ -96,4 +99,5 @@ public interface IotHubDatabase {
 	public Service addService(ServiceInfo serviceInfo, String name, String metadata, String config, boolean bootAtStartup);
 	public Service deleteService(String name);
 	public Service updateService(Service service, String name, String metadata, String config, boolean bootAtStartup);
+	
 }

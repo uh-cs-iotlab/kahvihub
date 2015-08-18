@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions 
  * and limitations under the License.
  */
-package fi.helsinki.cs.iot.hub.api;
+package fi.helsinki.cs.iot.hub.api.handlers.feeds;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import fi.helsinki.cs.iot.hub.api.uri.IotHubUri;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.IotHubApiRequestHandler;
+import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.model.feed.ComposedFeed;
 import fi.helsinki.cs.iot.hub.model.feed.ExecutableFeed;
@@ -39,7 +40,7 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  *
  */
-public class FeedGetRequestHandler extends IoTHubApiRequestHandler {
+public class FeedGetRequestHandler extends IotHubApiRequestHandler {
 
 	private static final String WRONG_URI = "Wrong URI";
 	private static final String ERROR = "Error";
@@ -161,7 +162,7 @@ public class FeedGetRequestHandler extends IoTHubApiRequestHandler {
 	 * @see fi.helsinki.cs.iot.hub.api.RequestHandler#handleRequest(fi.helsinki.cs.iot.hub.api.uri.IotHubUri)
 	 */
 	@Override
-	public Response handleRequest(IotHubUri uri) {
+	public Response handleRequest(IotHubRequest uri) {
 		Log.d(TAG, "Received a request for feeds, uri: "+ uri.getFullUri());
 		switch (uri.getIdentifiers().size()) {
 		case 0:

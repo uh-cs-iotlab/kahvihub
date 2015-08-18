@@ -1,5 +1,5 @@
 /*
- * fi.helsinki.cs.iot.hub.api.BasicIotHubApiRequestHandler
+ * fi.helsinki.cs.iot.hub.api.handlers.basic.BasicIotHubApiRequestHandler
  * v0.1
  * 2015
  *
@@ -15,18 +15,24 @@
  * See the License for the specific language governing permissions 
  * and limitations under the License.
  */
-package fi.helsinki.cs.iot.hub.api;
+package fi.helsinki.cs.iot.hub.api.handlers.basic;
 
-import java.io.File;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import fi.helsinki.cs.iot.hub.api.uri.IotHubUri;
+import fi.helsinki.cs.iot.hub.api.handlers.enablers.EnablerRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.plugins.PluginRequestHandler;
+import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
+import fi.helsinki.cs.iot.hub.api.request.IotHubRequest.Type;
+import fi.helsinki.cs.iot.hub.model.enabler.JavascriptPluginHelperImpl;
+import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
+import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
@@ -40,35 +46,40 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response.Status;
 public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 
 	private static final String STATUS_WRONG_URI = "WRONG_URI";
-	private static final String STATUS_NOT_YET_IMPLEMENTED = "NOT_YET_IMPLEMENTED";
-	private static final String STATUS_METHOD_NOT_SUPPORTED = "METHOD_NOT_SUPPORTED";
+	private static final String TAG = "BasicIotHubApiRequestHandler";
 
 	private List<Method> supportedMethods;
-	private File rootDir;
-	private IoTHubApiRequestHandler libGetReqHandler;
-	private IoTHubApiRequestHandler appGetReqHandler;
-	private IoTHubApiRequestHandler feedGetReqHandler;
-	private IoTHubApiRequestHandler feedPostReqHandler;
-	private IoTHubApiRequestHandler pluginGetReqHandler;
-	private IoTHubApiRequestHandler pluginPostReqHandler;
+	private Map<Type, IotHubApiRequestHandler> subHandlers;
+	
+	public BasicIotHubApiRequestHandler(Path libdir) {
 
-	public BasicIotHubApiRequestHandler(File rootDir) {
 		this.supportedMethods = new ArrayList<>();
-		this.supportedMethods.add(Method.GET);
-		this.supportedMethods.add(Method.POST);
-		this.supportedMethods.add(Method.PUT);
-		this.supportedMethods.add(Method.DELETE);
-		this.rootDir = rootDir;
-		this.libGetReqHandler = new LibraryGetRequestHandler(
-				Paths.get(this.rootDir.getAbsolutePath()));
-		this.appGetReqHandler = new ApplicationGetRequestHandler(
-				Paths.get(this.rootDir.getAbsolutePath(), "applications"));
-		this.feedGetReqHandler = new FeedGetRequestHandler();
-		this.feedPostReqHandler = new FeedPostRequestHandler();
-		this.pluginGetReqHandler = new PluginGetRequestHandler(
-				Paths.get(this.rootDir.getAbsolutePath(), "libraries"));
-		this.pluginPostReqHandler = new PluginPostRequestHandler(
-				Paths.get(this.rootDir.getAbsolutePath(), "libraries"));
+		this.subHandlers = new HashMap<>();
+
+		// First the plugins
+		if (libdir != null) {
+			PluginManager.getInstance().setJavascriptPluginHelper(
+					new JavascriptPluginHelperImpl(libdir));
+			this.subHandlers.put(Type.PLUGIN, 
+					new PluginRequestHandler(libdir));
+		}
+		else {
+			Log.w(TAG, "The libdir path is null, this is a bad idea");
+		}
+		
+		//Then the enablers
+		this.subHandlers.put(Type.ENABLER, 
+					new EnablerRequestHandler());
+		
+		//Add the list of supported methods
+		for(IotHubApiRequestHandler handler : subHandlers.values()) {
+			List<Method> methods = handler.getSupportedMethods();
+			for (Method method : methods) {
+				if (!supportedMethods.contains(method)) {
+					supportedMethods.add(method);
+				}
+			}
+		}
 	}
 
 	public int getVersion() {
@@ -90,7 +101,7 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 		return response;
 	}
 
-	private String getAllowMethodsHeader() {
+	/*private String getAllowMethodsHeader() {
 		List<Method> methods = new ArrayList<NanoHTTPD.Method>();
 		methods.add(Method.GET);
 		methods.add(Method.POST);
@@ -106,14 +117,14 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 			return null;
 		}
 	}
-	
+
 	private Response getDashboard() {
 		String html = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
 				"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\"\n" + 
 				"\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n" +
 				"<html xmlns=\"http://www.w3.org/1999/xhtml\"><head>" +
 				"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/>" +
-				"<script src=\"libraries/dashboard.js\"></script>" +
+				//"<script src=\"libraries/dashboard.js\"></script>" +
 				"</head><body></body></html>";
 
 		Response response = new NanoHTTPD.Response(Status.OK, "text/html; charset=utf-8", html);
@@ -124,60 +135,19 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 		response.addHeader("Access-Control-Allow-Origin", "*");
 		response.addHeader("Access-Control-Allow-Headers", "X-Requested-With");
 		return response;
-	}
+	}*/
 
-	private Response handleGetRequest(IotHubUri uri) {
-		switch (uri.getType()) {
-		case PLUGIN:
-			return pluginGetReqHandler.handleRequest(uri);
-		case LIBRARY:
-			return libGetReqHandler.handleRequest(uri);
-		case APPLICATION:
-			return appGetReqHandler.handleRequest(uri);
-		case FEED:
-			return feedGetReqHandler.handleRequest(uri);
-		case UNKNOWN:
-			if (uri.getIdentifiers() == null || uri.getIdentifiers().isEmpty()) {
-				return getDashboard();
-			}
-		default:
-			return getResponseKo(STATUS_WRONG_URI, STATUS_WRONG_URI);
-		}
-	}
-
-	private Response handlePostRequest(IotHubUri uri) {
-		switch (uri.getType()) {
-		case PLUGIN:
-			return pluginPostReqHandler.handleRequest(uri);
-		case FEED:
-			return feedPostReqHandler.handleRequest(uri);
-		default:
-			return getResponseKo(STATUS_NOT_YET_IMPLEMENTED, "POST requests are not yet implemented for others than feeds");
-		}
-	}
-
-	private Response handlePutRequest(IotHubUri uri) {
-		return getResponseKo(STATUS_NOT_YET_IMPLEMENTED, "PUT requests are not yet implemented"); 
-	}
-
-	private Response handleDeleteRequest(IotHubUri uri) {
-		return getResponseKo(STATUS_NOT_YET_IMPLEMENTED, "DELETE requests are not yet implemented");
-	}
 
 	public Response handleRequest(Method method, String uri,
 			Map<String, String> parameters, String mimeType, Map<String, String> files) {
-		IotHubUri hubUri = new IotHubUri(uri, parameters, mimeType, getJsonData(files));
-		switch (method) {
-		case GET:
-			return handleGetRequest(hubUri);
-		case POST:
-			return handlePostRequest(hubUri);
-		case PUT:
-			return handlePutRequest(hubUri);
-		case DELETE:
-			return handleDeleteRequest(hubUri);
-		default:
-			return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "Method " + method.toString() + " is not supported");
+		IotHubRequest request = new IotHubRequest(method, uri, parameters, mimeType, getJsonData(method, files));
+		IotHubApiRequestHandler handler = this.subHandlers.get(request.getType());
+		if (handler == null) {
+			//TODO put proper ko response
+			return getResponseKo(STATUS_WRONG_URI, STATUS_WRONG_URI);
+		}
+		else {
+			return handler.handleRequest(request);
 		}
 	}
 

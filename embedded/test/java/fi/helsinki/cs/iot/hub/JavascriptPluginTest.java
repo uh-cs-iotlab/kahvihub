@@ -28,6 +28,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -41,9 +43,11 @@ import java.util.concurrent.Executors;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Before;
 import org.junit.Test;
 
 import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
+import fi.helsinki.cs.iot.hub.model.enabler.JavascriptPluginHelperImpl;
 import fi.helsinki.cs.iot.hub.model.enabler.Plugin;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginException;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
@@ -53,6 +57,18 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
 import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo.Type;
 
 public class JavascriptPluginTest {
+	
+	private Path libdir;
+	
+	/**
+	 * @throws java.lang.Exception
+	 */
+	@Before
+	public void setUp() throws Exception {
+		libdir = Paths.get(System.getProperty("user.dir"));
+		PluginManager.getInstance().setJavascriptPluginHelper(
+				new JavascriptPluginHelperImpl(libdir));
+	}
 
 	private Plugin makePluginNeedConfiguration(String pluginName, int type) {
 		PluginManager.getInstance().removeAllPlugins();
@@ -98,14 +114,15 @@ public class JavascriptPluginTest {
 		}
 		File temp = null;
 		try {
-			temp = File.createTempFile("tempfile", ".tmp");
+			temp = File.createTempFile("tempfile", ".tmp", libdir.toFile());
+			temp.deleteOnExit();
 			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(temp));
 			bufferedWriter.write(pluginScript);
 			bufferedWriter.close();
 		} catch (IOException e) {
 			fail(e.getMessage());
 		}
-		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getAbsolutePath());
+		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getName());
 		assertNotNull(info);
 		Enabler enabler = new Enabler(1, enablerName, null, info, null);
 		assertNotNull(enabler);
@@ -210,14 +227,15 @@ public class JavascriptPluginTest {
 
 		File temp = null;
 		try {
-			temp = File.createTempFile("tempfile", ".tmp");
+			temp = File.createTempFile("tempfile", ".tmp", libdir.toFile());
+			temp.deleteOnExit();
 			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(temp));
 			bufferedWriter.write(pluginScript);
 			bufferedWriter.close();
 		} catch (IOException e) {
 			fail(e.getMessage());
 		}
-		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getAbsolutePath());
+		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getName());
 		assertNotNull(info);
 		Enabler enabler = new Enabler(1, enablerName, null, info, null);
 		assertNotNull(enabler);
@@ -381,14 +399,15 @@ public class JavascriptPluginTest {
 
 		File temp = null;
 		try {
-			temp = File.createTempFile("tempfile", ".tmp");
+			temp = File.createTempFile("tempfile", ".tmp", libdir.toFile());
+			temp.deleteOnExit();
 			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(temp));
 			bufferedWriter.write(pluginScript);
 			bufferedWriter.close();
 		} catch (IOException e) {
 			fail(e.getMessage());
 		}
-		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getAbsolutePath());
+		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getName());
 		assertNotNull(info);
 		Enabler enabler = new Enabler(1, enablerName, null, info, null);
 		assertNotNull(enabler);
@@ -751,14 +770,15 @@ public class JavascriptPluginTest {
 
 		File temp = null;
 		try {
-			temp = File.createTempFile("tempfile", ".tmp");
+			temp = File.createTempFile("tempfile", ".tmp", libdir.toFile());
+			temp.deleteOnExit();
 			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(temp));
 			bufferedWriter.write(pluginScript);
 			bufferedWriter.close();
 		} catch (IOException e) {
 			fail(e.getMessage());
 		}
-		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getAbsolutePath());
+		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getName());
 		assertNotNull(info);
 		Enabler enabler = new Enabler(1, enablerName, null, info, null);
 		assertNotNull(enabler);

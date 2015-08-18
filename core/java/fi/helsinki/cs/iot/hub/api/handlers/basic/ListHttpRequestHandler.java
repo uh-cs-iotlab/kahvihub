@@ -1,4 +1,4 @@
-package fi.helsinki.cs.iot.hub.api;
+package fi.helsinki.cs.iot.hub.api.handlers.basic;
 
 import java.util.LinkedList;
 import java.util.Map;

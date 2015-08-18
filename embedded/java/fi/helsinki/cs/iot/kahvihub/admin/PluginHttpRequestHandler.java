@@ -24,7 +24,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 
-import fi.helsinki.cs.iot.hub.api.HttpRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.HttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.database.IotHubDataHandler;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginException;

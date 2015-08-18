@@ -40,7 +40,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import fi.helsinki.cs.iot.hub.api.HttpRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.HttpRequestHandler;
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.utils.ScriptUtils;

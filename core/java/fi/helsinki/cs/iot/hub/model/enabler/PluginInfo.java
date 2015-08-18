@@ -40,9 +40,35 @@ public class PluginInfo extends BasicPluginInfo {
 
 	public JSONObject toJSON() throws JSONException {
 		JSONObject jObj = new JSONObject();
+		jObj.put("id", id);
 		jObj.put("pluginType", getType().toString());
 		jObj.put("service", getServiceName());
-		jObj.put("package", getPackageName());
+		if (getPackageName() != null) {
+			jObj.put("package", getPackageName());
+		}
 		return jObj;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + (int) (id ^ (id >>> 32));
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		PluginInfo other = (PluginInfo) obj;
+		if (id != other.id)
+			return false;
+		return true;
+	}
+	
 }

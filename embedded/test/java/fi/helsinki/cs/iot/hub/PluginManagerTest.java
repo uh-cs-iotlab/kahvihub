@@ -26,11 +26,14 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo.Type;
 import fi.helsinki.cs.iot.hub.model.enabler.Enabler;
+import fi.helsinki.cs.iot.hub.model.enabler.JavascriptPluginHelperImpl;
 import fi.helsinki.cs.iot.hub.model.enabler.Plugin;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginException;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
@@ -42,6 +45,15 @@ import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
  */
 public class PluginManagerTest {
 
+	/**
+	 * @throws java.lang.Exception
+	 */
+	@Before
+	public void setUp() throws Exception {
+		PluginManager.getInstance().setJavascriptPluginHelper(
+				new JavascriptPluginHelperImpl(Paths.get(System.getProperty("user.dir"))));
+	}
+	
 	/**
 	 * Test method for {@link fi.helsinki.cs.iot.hub.model.enabler.PluginManager#getInstance()}.
 	 */
@@ -61,15 +73,16 @@ public class PluginManagerTest {
 		File temp = null;
 		try {
 			temp = File.createTempFile("tempfile", ".tmp");
+			temp.deleteOnExit();
 		} catch (IOException e) {
 			fail(e.getMessage());
 		} 
-		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, "whatever", null, temp.getAbsolutePath());
+		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, "whatever", null, temp.getName());
 		Enabler enabler = new Enabler(1, "testEnabler", null, info, null);
 		assertNotNull(enabler);
 		Plugin plugin = PluginManager.getInstance().getPlugin(enabler);
 		assertNotNull(plugin);
-		PluginInfo info2 = new PluginInfo(2, Type.JAVASCRIPT, "whatever2", null, temp.getAbsolutePath());
+		PluginInfo info2 = new PluginInfo(2, Type.JAVASCRIPT, "whatever2", null, temp.getName());
 		Enabler enabler2 = new Enabler(2, "testEnabler", null, info2, null);
 		Plugin plugin2 = PluginManager.getInstance().getPlugin(enabler2);
 		assertEquals(plugin, plugin2);

@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.utils.Log;
 
 /**
@@ -42,7 +43,7 @@ public class PluginManager {
 	private PluginManager() {
 		this.plugins = new HashMap<String, Plugin>();
 		this.nativePluginHelper = null;
-		this.javascriptPluginHelper = new JavascriptPluginHelperImpl();
+		this.javascriptPluginHelper = null;
 	}
 
 	public static PluginManager getInstance() {
@@ -79,10 +80,9 @@ public class PluginManager {
 			}
 			else if (enabler.getPluginInfo().isJavascript()) {
 				String pluginName = enabler.getPluginInfo().getServiceName();
-				File scriptFile = new File(enabler.getPluginInfo().getFilename());
 				try {
 					//javascriptPluginHelper.checkPlugin(pluginName, scriptFile);
-					plugin = javascriptPluginHelper.createPlugin(pluginName, scriptFile);
+					plugin = javascriptPluginHelper.createPluginWithFilename(pluginName, enabler.getPluginInfo().getFilename());
 				} catch (PluginException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -127,6 +127,13 @@ public class PluginManager {
 			return plugin;
 		}
 	}
+	
+	public void setJavascriptPluginHelper(JavascriptPluginHelper javascriptPluginHelper) {
+		if (javascriptPluginHelper == null) {
+			Log.w(TAG, "Be careful, you are unsetting the javascript plugin helper.");
+		}
+		this.javascriptPluginHelper = javascriptPluginHelper;
+	}
 
 	public void setNativePluginHelper(NativePluginHelper nativePluginHelper) {
 		if (nativePluginHelper == null) {
@@ -163,6 +170,36 @@ public class PluginManager {
 				e.printStackTrace();
 			}
 			it.remove();
+		}
+	}
+
+	public Plugin removePlugin(Enabler enabler) {
+		Plugin plugin = plugins.get(enabler.getName());
+		try {
+			if (plugin != null) {
+				plugin.close();
+			}
+		} catch (PluginException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return plugins.remove(enabler.getName());
+
+	}
+
+	public void removeAllPluginsForPluginInfo(PluginInfo pluginInfo) {
+		for(Iterator<Map.Entry<String, Plugin>> it = plugins.entrySet().iterator(); it.hasNext(); ) {
+			Map.Entry<String, Plugin> entry = it.next();
+			Enabler enabler = IotHubDataAccess.getInstance().getEnabler(entry.getKey());
+			if (enabler != null && enabler.getPluginInfo().equals(pluginInfo)) {
+				try {
+					entry.getValue().close();
+				} catch (PluginException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				it.remove();
+			}
 		}
 	}
 }

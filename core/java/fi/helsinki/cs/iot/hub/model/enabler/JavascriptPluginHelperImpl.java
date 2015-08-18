@@ -18,6 +18,8 @@
 package fi.helsinki.cs.iot.hub.model.enabler;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptEngineException;
@@ -28,15 +30,22 @@ import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  */
 public class JavascriptPluginHelperImpl implements JavascriptPluginHelper {
-
-	@Override
-	public Plugin createPlugin(String pluginName, File file) throws PluginException {
-		String script = ScriptUtils.convertFileToString(file);
-		return createPlugin(pluginName, script);
+	
+	private Path libdir;
+	
+	public JavascriptPluginHelperImpl(Path libdir) {
+		this.libdir = libdir;
 	}
 
 	@Override
-	public Plugin createPlugin(String pluginName, String script) throws PluginException{
+	public Plugin createPluginWithFilename(String pluginName, String filename) throws PluginException {
+		File file = Paths.get(libdir.toAbsolutePath().toString(), filename).toFile();
+		String script = ScriptUtils.convertFileToString(file);
+		return createPluginWithScript(pluginName, script);
+	}
+
+	@Override
+	public Plugin createPluginWithScript(String pluginName, String script) throws PluginException{
 		//TODO fix that
 		int mode = DuktapeJavascriptEngineWrapper.EVENT_LOOP |
 				DuktapeJavascriptEngineWrapper.HTTP_REQUEST |

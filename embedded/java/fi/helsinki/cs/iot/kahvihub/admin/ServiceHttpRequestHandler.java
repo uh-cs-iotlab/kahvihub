@@ -29,7 +29,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import fi.helsinki.cs.iot.hub.api.HttpRequestHandler;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.HttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.model.service.RunnableService;
 import fi.helsinki.cs.iot.hub.model.service.Service;
@@ -270,7 +270,7 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 			String mimeType, Map<String, String> files) {
 		//Log.d(TAG, "Received a post request for service");
 		if (isJsonMimeType(mimeType)) {
-			String data = getJsonData(files);
+			String data = getJsonData(Method.POST, files);
 			int numberOfIdentifiers = getNumberOfIdentifiers(uri);
 			if (data == null) {
 				Log.e(TAG, "No JSON data has been found");
@@ -285,7 +285,6 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 					Service service = IotHubDataAccess.getInstance().getService(serviceName);
 					if (service != null) {
 						// First I get the current service
-						RunnableService rs = ServiceManager.getInstance().getConfiguredRunnableService(service);
 						JSONObject jdata = new JSONObject(data);
 						boolean bootAtStartup = service.bootOnStartup() || jdata.optBoolean("bootAtStartup");
 						String name = jdata.optString("name") == null ? service.getName() : jdata.optString("name");
@@ -322,9 +321,6 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 
 				}
 			} catch (JSONException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (ServiceException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}

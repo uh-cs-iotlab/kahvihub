@@ -1,5 +1,5 @@
 /*
- * fi.helsinki.cs.iot.hub.IotHubUriTest
+ * fi.helsinki.cs.iot.hub.IotHubRequestTest
  * v0.1
  * 2015
  *
@@ -24,23 +24,24 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import fi.helsinki.cs.iot.hub.api.uri.IotHubUri;
+import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
+import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 
 /**
  * @author mineraud
  *
  */
-public class IotHubUriTest {
+public class IotHubRequestTest {
 
 	/**
-	 * Test method for {@link fi.helsinki.cs.iot.hub.api.uri.IotHubUri#IotHubUri(java.lang.String, java.util.Map)}.
+	 * Test method for {@link fi.helsinki.cs.iot.hub.api.request.IotHubRequest#IotHubRequest(java.lang.String, java.util.Map)}.
 	 */
 	@Test
-	public void testIotHubUriStringMapOfStringString() {
+	public void testIotHubRequestStringMapOfStringString() {
 		//TODO This is only a dummy test
 		Map<String, String> params = new HashMap<>();
-		IotHubUri uri = new IotHubUri("http://www.whatever.the.address", params);
-		assertNotNull(uri);
+		IotHubRequest request = new IotHubRequest(Method.GET, "http://www.whatever.the.address", params);
+		assertNotNull(request);
 	}
 
 }

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions 
  * and limitations under the License.
  */
-package fi.helsinki.cs.iot.hub.api;
+package fi.helsinki.cs.iot.hub.api.handlers.applications;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -31,7 +31,8 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
 
-import fi.helsinki.cs.iot.hub.api.uri.IotHubUri;
+import fi.helsinki.cs.iot.hub.api.handlers.basic.IotHubApiRequestHandler;
+import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
@@ -42,7 +43,7 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  *
  */
-public class ApplicationGetRequestHandler extends IoTHubApiRequestHandler {
+public class ApplicationGetRequestHandler extends IotHubApiRequestHandler {
 
 	private static final String TAG = "ApplicationGetRequestHandler";
 	//private Path dir;
@@ -55,7 +56,7 @@ public class ApplicationGetRequestHandler extends IoTHubApiRequestHandler {
 	}
 
 	@Override
-	public Response handleRequest(IotHubUri uri) {
+	public Response handleRequest(IotHubRequest uri) {
 		Log.d(TAG, "Got a request");
 		// Case where we just want to list the libraires
 		if (uri.getIdentifiers().size() == 0) {
