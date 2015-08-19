@@ -49,6 +49,7 @@ import fi.helsinki.cs.iot.hub.model.feed.Field;
 import fi.helsinki.cs.iot.hub.model.feed.FieldDescription;
 import fi.helsinki.cs.iot.hub.model.service.Service;
 import fi.helsinki.cs.iot.hub.model.service.ServiceInfo;
+import fi.helsinki.cs.iot.hub.model.service.ServiceInfo.Type;
 import fi.helsinki.cs.iot.hub.utils.Log;
 
 /**
@@ -1833,7 +1834,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			if (rs.next()) {
 				String name = rs.getString(IotHubDataHandler.KEY_SERVICE_INFO_SERVICE_NAME);
 				String filename = rs.getString(IotHubDataHandler.KEY_SERVICE_INFO_FILENAME);
-				serviceInfo = new ServiceInfo(id, name, filename);
+				serviceInfo = new ServiceInfo(id, Type.JAVASCRIPT, name, filename);
 			}
 			rs.close();
 			ps.close();

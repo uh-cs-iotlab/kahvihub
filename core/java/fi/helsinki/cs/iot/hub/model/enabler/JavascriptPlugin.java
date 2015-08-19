@@ -94,7 +94,7 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 		try {
 			boolean res = jsEngine.pluginCheckConfiguration(jname, jscript, pluginConfig);
 			if (res) {
-				this.configuration = pluginConfig;
+				return configurePersistant(pluginConfig);
 			}
 			return res;
 		} catch (JavascriptEngineException e) {

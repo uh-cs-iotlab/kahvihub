@@ -26,6 +26,11 @@ import org.json.JSONObject;
  */
 public class ServiceInfo {
 	
+	public enum Type {
+		NATIVE, JAVASCRIPT
+	}
+	
+	private Type type;
 	private long id;
 	private String name;
 	private String filename;
@@ -34,8 +39,9 @@ public class ServiceInfo {
 	 * @param id
 	 * @param name
 	 */
-	public ServiceInfo(long id, String name, String filename) {
+	public ServiceInfo(long id, Type type, String name, String filename) {
 		this.id = id;
+		this.type = type;
 		this.name = name;
 		this.filename = filename;
 	}
@@ -60,8 +66,9 @@ public class ServiceInfo {
 
 	public JSONObject toJSON() throws JSONException {
 		JSONObject jObj = new JSONObject();
+		jObj.put("id", id);
+		jObj.put("pluginType", type.name());
 		jObj.put("service", name);
-		jObj.put("filename", filename);
 		return jObj;
 	}
 

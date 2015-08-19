@@ -18,11 +18,8 @@
 package fi.helsinki.cs.iot.hub.model.service;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptEngineException;
@@ -36,30 +33,22 @@ import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
 public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 
 	//private static final String TAG = "JavascriptRunnableServiceHelper";
-	private List<String> initFiles;
-	private String serviceFolder;
+	private Path libdir;
 
-	public JavascriptRunnableServiceHelper(String serviceFolder, List<String> initFiles) {
-		this.initFiles = new ArrayList<String>();
-		for (String f : initFiles) {
-			this.initFiles.add(serviceFolder + f); 
-		}
-		this.serviceFolder = serviceFolder;
+	public JavascriptRunnableServiceHelper(Path libdir) {
+		this.libdir = libdir;
 	}
 
-	public RunnableService createService(Service service) {
-		try {
-			InputStream inputStream = new FileInputStream(serviceFolder + service.getServiceInfo().getFilename());
-			String script = ScriptUtils.convertStreamToString(inputStream);
-			inputStream.close();
-			//TODO I have to implement the modes for the services as well
-			JavascriptRunnableService javascriptRunnableService = new JavascriptRunnableService(0, service, script);
-			return javascriptRunnableService;
-		}
-		catch (IOException e) {
-			e.printStackTrace();
-		} 
-		return null;
+	public RunnableService createRunnableService(Service service) {
+		String pluginName = service.getServiceInfo().getName();
+		File file = Paths.get(libdir.toAbsolutePath().toString(), service.getServiceInfo().getFilename()).toFile();
+		String script = ScriptUtils.convertFileToString(file);
+		//TODO fix that
+		int mode = DuktapeJavascriptEngineWrapper.EVENT_LOOP |
+				DuktapeJavascriptEngineWrapper.HTTP_REQUEST |
+				DuktapeJavascriptEngineWrapper.TCP_SOCKET;
+		JavascriptRunnableService javascriptRunnableService = new JavascriptRunnableService(service, pluginName, script, mode);
+		return javascriptRunnableService;
 	}
 
 	@Override
@@ -80,7 +69,7 @@ public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 		} catch (JavascriptEngineException e) {
 			throw new ServiceException(e.getMessage());
 		}
-		
+
 	}
 
 }

@@ -64,7 +64,7 @@ public class IotHubHTTPDTest {
 
 		File dbFile = File.createTempFile("IotHubHTTPDTest", ".db");
 		dbFile.deleteOnExit();
-		
+
 		IotHubDataAccess.setInstance(
 				new IotHubDbHandlerSqliteJDBCImpl(dbFile.getAbsolutePath(), 1, true));
 		try {
@@ -131,7 +131,7 @@ public class IotHubHTTPDTest {
 
 
 
-	private JSONObject makeJsonObjectForPlugin(String pluginName, String packageName, BasicPluginInfo.Type type, File file) {
+	private JSONObject makeJsonObjectForPlugin(String pluginName, String packageName, BasicPluginInfo.Type type, File file, boolean isService) {
 		JSONObject json = new JSONObject();
 		try {
 			json.put("plugin", pluginName);
@@ -139,6 +139,9 @@ public class IotHubHTTPDTest {
 			json.put("type", type.name());
 			String encoded = ScriptUtils.encodeBase64FromFile(file);
 			json.put("file", encoded);
+			if (isService) {
+				json.put("isService", true);
+			}
 			return json;
 		} catch (JSONException | IOException e) {
 			// TODO Auto-generated catch block
@@ -156,14 +159,14 @@ public class IotHubHTTPDTest {
 		String pluginName = "MyPlugin";
 		//now I want to had a javascript plugin
 		File pluginFile = makePluginFile(pluginName);
-		JSONObject jsonObject = makeJsonObjectForPlugin(pluginName, null, Type.JAVASCRIPT, pluginFile);
+		JSONObject jsonObject = makeJsonObjectForPlugin(pluginName, null, Type.JAVASCRIPT, pluginFile, false);
 		assertNotNull(jsonObject);
 
 		//First check the if I can had it with get
 		res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/plugins/", jsonObject.toString());
 		assertEquals("[]", res.trim());
 
-	
+
 		PluginInfo pluginInfo = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, null);
 		res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + port + "/plugins/", jsonObject.toString());
 		try {
@@ -174,9 +177,9 @@ public class IotHubHTTPDTest {
 			fail(e.getMessage());
 		}
 		assertEquals(1, IotHubDataAccess.getInstance().getPlugins().size());
-		
+
 		//Now going to delete the plugininfo
-		res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("DELETE", "http://127.0.0.1:" + port + "/plugins?id=1", null);
+		res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("DELETE", "http://127.0.0.1:" + port + "/plugins?id=1&type=enabler", null);
 		try {
 			assertEquals(pluginInfo.toJSON().toString(), res.trim());
 		} catch (JSONException e) {
@@ -191,12 +194,12 @@ public class IotHubHTTPDTest {
 	public void testEnablerAPI() {
 		String res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/enablers/", null);
 		assertEquals("[]", res.trim());
-		
+
 		//Now I want to create a javascript plugin to attach to my enabler
 		String pluginName = "MyPlugin";
 		//now I want to had a javascript plugin
 		File pluginFile = makePluginFile(pluginName);
-		JSONObject jsonObject = makeJsonObjectForPlugin(pluginName, null, Type.JAVASCRIPT, pluginFile);
+		JSONObject jsonObject = makeJsonObjectForPlugin(pluginName, null, Type.JAVASCRIPT, pluginFile, false);
 		assertNotNull(jsonObject);
 		String myPluginString = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + port + "/plugins/", jsonObject.toString());
 		JSONObject jPlugin = null;
@@ -209,7 +212,7 @@ public class IotHubHTTPDTest {
 			jEnabler.put("plugin", pluginId);
 			jEnabler.put("name", "fakeName");
 			jEnabler.put("metadata", metadata);
-			
+
 			// I should get an enable with no features as it is not configured
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + port + "/enablers/", jEnabler.toString());
 			JSONObject jexpectedEnabler = new JSONObject();
@@ -220,7 +223,7 @@ public class IotHubHTTPDTest {
 			JSONArray array = new JSONArray();
 			jexpectedEnabler.put("features", array);
 			assertEquals(jexpectedEnabler.toString(), res.trim());
-			
+
 			String featureName = "MyFeature";
 			JSONObject config = new JSONObject();
 			config.put("name", featureName);
@@ -233,7 +236,7 @@ public class IotHubHTTPDTest {
 			config.put("value", "Uksomatonta");
 			JSONObject data = new JSONObject();
 			data.put("configuration", config);
-			
+
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("PUT", "http://127.0.0.1:" + port + "/enablers/fakeName", data.toString());
 			JSONObject expectedFeature = new JSONObject();
 			expectedFeature.put("id", 1);
@@ -248,7 +251,7 @@ public class IotHubHTTPDTest {
 			jexpectedEnabler.put("features", array);
 			jexpectedEnabler.put("config", config.toString());
 			assertEquals(jexpectedEnabler.toString().length(), res.trim().length());
-			
+
 			//Now just change quicky the configuration
 			config.put("value", "Hard to believe");
 			data.put("configuration", config);
@@ -257,7 +260,7 @@ public class IotHubHTTPDTest {
 			jexpectedEnabler.put("name", name);
 			jexpectedEnabler.put("config", config.toString());
 			assertEquals(jexpectedEnabler.toString().length(), res.trim().length());
-			
+
 			//Now I want to change the feature as an atomic feed
 			data = new JSONObject();
 			data.put("enableAsAtomicFeed", true);
@@ -265,7 +268,7 @@ public class IotHubHTTPDTest {
 			expectedFeature.put("id", 2);
 			expectedFeature.put("isAtomicFeed", true);
 			assertEquals(expectedFeature.toString(), res.trim());
-			
+
 			//Now I will check for feeds
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/feeds/", null);
 			JSONArray feedArray = new JSONArray(res);
@@ -274,23 +277,117 @@ public class IotHubHTTPDTest {
 			String feedName = feed1.getString("name");
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/feeds/" + feedName, null);
 			assertEquals("\"Hard to believe\"", res.trim());
-			
+
 			JSONObject toPostToFeed = new JSONObject("{\"test\": \"Unbelievable\"}");
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + port + "/feeds/" + feedName, toPostToFeed.toString());
 			assertEquals(toPostToFeed.toString(), res.trim());
-			
+
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/feeds/" + feedName, null);
 			assertEquals(toPostToFeed.toString(), res.trim());
-			
+
 			data.put("enableAsAtomicFeed", false);
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("PUT", "http://127.0.0.1:" + port + "/enablers/" + name + "/" + featureName, data.toString());
 			expectedFeature.put("isAtomicFeed", false);
 			assertEquals(expectedFeature.toString(), res.trim());
-			
+
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/feeds/" + feedName, null);
 			JSONObject jerror = new JSONObject(res);
 			assertEquals("Error", jerror.getString("status"));
+
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+
+	private File makePluginFileForService(String pluginName) {
+		String pluginScript = String.format("var %s = {};", pluginName);
+
+		//My plugin needConfiguration
+		pluginScript += String.format("%s.needConfiguration = true;", pluginName);
+		//Set config to null
+		pluginScript += String.format("%s.config = null;", pluginName);
+
+		String checkConfigurationFunction = "function(data) { "
+				//+ " print(data);"
+				+ " var config = JSON.parse(data); "
+				+ " if (typeof(config.value) == 'undefined') { return false; }"
+				+ " return true; }";
+		pluginScript += String.format("%s.checkConfiguration = %s;", pluginName, checkConfigurationFunction);
+		pluginScript += String.format("%s.configure = function(config) { if (this.checkConfiguration(config)) {this.config = JSON.parse(config);}};", pluginName);
+		pluginScript += String.format("%s.run = function() { if (this.config) { print('I got a config value: ' + this.config.value);} else {print('I have nothing to print');} setTimeout(function() {print('TEST');}, 1000);};", pluginName);
+
+		File temp = null;
+		try {
+			temp = File.createTempFile("tempfile", ".tmp");
+			temp.deleteOnExit();
+			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(temp));
+			bufferedWriter.write(pluginScript);
+			bufferedWriter.close();
+		} catch (IOException e) {
+			fail(e.getMessage());
+		}
+		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getAbsolutePath());
+		assertNotNull(info);
+		return temp;
+	}
+
+
+	@Test
+	public void testServiceAPI() {
+		String res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/services/", null);
+		assertEquals("[]", res.trim());
+
+		//Now I want to create a javascript plugin to attach to my service
+		String pluginName = "MyPlugin";
+		//now I want to had a javascript plugin
+		File pluginFile = makePluginFileForService(pluginName);
+		JSONObject jsonObject = makeJsonObjectForPlugin(pluginName, null, Type.JAVASCRIPT, pluginFile, true);
+		assertNotNull(jsonObject);
+		String myPluginString = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + port + "/plugins/", jsonObject.toString());
+		JSONObject jPlugin = null;
+		try {
+			jPlugin = new JSONObject(myPluginString);
+			long pluginId = jPlugin.getLong("id");
+			String name = "MyService";
+			String metadata = "A freshly created service";
+			JSONObject jservice = new JSONObject();
+			jservice.put("plugin", pluginId);
+			jservice.put("name", name);
+			jservice.put("metadata", metadata);
+			jservice.put("bootAtStartup", false);
+
+			// I should get an enable with no features as it is not configured
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + port + "/services/", jservice.toString());
+			JSONObject jexpectedService = new JSONObject();
+			jexpectedService.put("id", 1);
+			jexpectedService.put("name", name);
+			jexpectedService.put("metadata", metadata);
+			jexpectedService.put("plugin", jPlugin);
+			jexpectedService.put("bootAtStartup", false);
+			assertEquals(jexpectedService.toString(), res.trim());
 			
+			JSONObject data = new JSONObject();
+			JSONObject config = new JSONObject();
+			config.put("value", "Text to print");
+			data.put("configuration", config);
+			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("PUT", "http://127.0.0.1:" + port + "/services/" + name, data.toString());
+			jexpectedService.put("id", 1);
+			jexpectedService.put("config", config.toString());
+			assertEquals(jexpectedService.toString(), res.trim());
+			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + port + "/services/" + name + "/start", null);
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				fail(e.getMessage());
+			}
+			System.out.println(res.trim());
+
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

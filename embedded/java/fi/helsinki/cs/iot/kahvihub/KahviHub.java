@@ -20,8 +20,6 @@ package fi.helsinki.cs.iot.kahvihub;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -35,8 +33,6 @@ import fi.helsinki.cs.iot.hub.api.handlers.basic.ListHttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.model.enabler.NativePluginHelper;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
-import fi.helsinki.cs.iot.hub.model.service.JavascriptRunnableServiceHelper;
-import fi.helsinki.cs.iot.hub.model.service.ServiceManager;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.utils.Logger;
 import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
@@ -90,11 +86,11 @@ public class KahviHub {
 	}
 
 	private static void setJavascriptRunnableServiceHelper(HubConfig config) {
-		List<String> initFiles = new ArrayList<String>();
+		/*List<String> initFiles = new ArrayList<String>();
 		initFiles.add("ecma_eventloop.js");
 		initFiles.add("httpRequest.js");
 		JavascriptRunnableServiceHelper javascriptRunnableServiceHelper = new JavascriptRunnableServiceHelper(config.getLibdir(), initFiles);
-		ServiceManager.getInstance().setServiceHelper(javascriptRunnableServiceHelper);
+		ServiceManager.getInstance().setServiceHelper(javascriptRunnableServiceHelper);*/
 	}
 	
 	//TODO init should be reading a config file

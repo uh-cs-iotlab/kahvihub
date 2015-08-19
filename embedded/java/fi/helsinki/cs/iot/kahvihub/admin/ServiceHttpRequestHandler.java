@@ -293,7 +293,7 @@ public class ServiceHttpRequestHandler extends HttpRequestHandler {
 					if (service != null) {
 						// First I get the current service
 						JSONObject jdata = new JSONObject(data);
-						boolean bootAtStartup = service.bootOnStartup() || jdata.optBoolean("bootAtStartup");
+						boolean bootAtStartup = service.bootAtStartup() || jdata.optBoolean("bootAtStartup");
 						String name = jdata.optString("name") == null ? service.getName() : jdata.optString("name");
 						String metadata = jdata.optString("metadata") == null ? service.getMetadata() : jdata.optString("metadata");
 						String config = null;

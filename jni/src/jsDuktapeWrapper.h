@@ -43,14 +43,6 @@ JNIEXPORT jstring JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascript
 
 /*
  * Class:     fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascriptEngineWrapper
- * Method:    needConfiguration
- * Signature: (Ljava/lang/String;Ljava/lang/String;)Z
- */
-JNIEXPORT jboolean JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascriptEngineWrapper_needConfiguration
-  (JNIEnv *, jobject, jstring, jstring);
-
-/*
- * Class:     fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascriptEngineWrapper
  * Method:    run
  * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
  */

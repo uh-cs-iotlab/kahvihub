@@ -79,7 +79,7 @@ public class ServicePutRequestHandler extends IotHubApiRequestHandler {
 				String newName = jdata.has("name") ? jdata.getString("name") : service.getName();
 				String newMetadata = jdata.has("metadata") ? jdata.getString("metadata") : service.getMetadata();
 				String newConfiguration = jdata.has("configuration") ? jdata.getString("configuration") : service.getConfig();
-				boolean bootAtStartup = jdata.has("bootAtStartup") ? jdata.getBoolean("bootAtStartup") : service.bootOnStartup();
+				boolean bootAtStartup = jdata.has("bootAtStartup") ? jdata.getBoolean("bootAtStartup") : service.bootAtStartup();
 
 				//Need to check the new configuration if there is one
 				if (jdata.has("configuration")) {

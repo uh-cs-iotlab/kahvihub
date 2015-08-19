@@ -25,7 +25,7 @@ import java.io.File;
  */
 public interface RunnableServiceHelper {
 
-	public RunnableService createService(Service service);
+	public RunnableService createRunnableService(Service service);
 	public void checkService(String serviceName, File file) throws ServiceException;
 	public void checkService(String serviceName, String script) throws ServiceException;
 }

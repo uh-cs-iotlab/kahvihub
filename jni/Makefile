@@ -1,4 +1,4 @@
-DUKTAPE_SOURCES = duktape.c poll.c tcpSocket.c httpRequest.c jsDuktapeWrapper.c
+DUKTAPE_SOURCES = duktape.c poll.c c_eventloop.c setTimeout.c socket.c tcpSocket.c httpRequest.c jsDuktapeWrapper.c
 
 ifeq ($(OS),Windows_NT)
     # TODO: test for windows

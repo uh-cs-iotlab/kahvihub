@@ -17,6 +17,7 @@
  */
 package fi.helsinki.cs.iot.hub.model.service;
 
+import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptEngineException;
 import fi.helsinki.cs.iot.hub.utils.Log;
@@ -29,23 +30,24 @@ import fi.helsinki.cs.iot.hub.utils.Log;
 public class JavascriptRunnableService implements RunnableService {
 
 	private static final String TAG = "JavascriptRunnableService";
-	private Service service;
-	private String configuration;
-	private String script;
-	private int mode;
+	
 	private Thread thread;
-	private DuktapeJavascriptEngineWrapper runningJsEngine;
-
-	public JavascriptRunnableService(int mode, Service service, String script) {
-		//TODO I need to have a better look at this
-		this.mode = DuktapeJavascriptEngineWrapper.HTTP_REQUEST |
-				DuktapeJavascriptEngineWrapper.EVENT_LOOP |
-				DuktapeJavascriptEngineWrapper.TCP_SOCKET;
-		this.service = service;
-		this.configuration = null;
-		this.script = script;
-		this.runningJsEngine = null;
+	private final String jname;
+	private final String jscript;
+	private String configuration;
+	private DuktapeJavascriptEngineWrapper wrapper;
+	private Service service;
+	
+	public JavascriptRunnableService(String jname, String jscript, int jsEngineModes) {
+		this(null, jname, jscript, jsEngineModes);
+	}
+	
+	public JavascriptRunnableService(Service service, String jname, String jscript, int jsEngineModes) {
+		this.jname = jname;
+		this.jscript = jscript;
 		this.thread = null;
+		this.wrapper = new DuktapeJavascriptEngineWrapper(this, jsEngineModes);
+		this.service = service;
 	}
 
 	/* (non-Javadoc)
@@ -60,14 +62,41 @@ public class JavascriptRunnableService implements RunnableService {
 	}
 
 	/* (non-Javadoc)
-	 * @see fi.helsinki.cs.iot.hub.model.service.Service#configure(java.lang.String)
+	 * @see fi.helsinki.cs.iot.hub.model.enabler.Plugin#configure(java.lang.String)
 	 */
 	@Override
-	public boolean configure(String configuration) throws ServiceException {
-		this.configuration = configuration;
-		return true;
+	public boolean configure(String pluginConfig) throws ServiceException {
+		if (compareConfiguration(pluginConfig)) {
+			return true;
+		}
+		stop();
+		DuktapeJavascriptEngineWrapper jsEngine = 
+				new DuktapeJavascriptEngineWrapper();
+		try {
+			boolean res = jsEngine.pluginCheckConfiguration(jname, jscript, pluginConfig);
+			if (res) {
+				this.configuration = pluginConfig;
+				updateConfiguration();
+			}
+			return res;
+		} catch (JavascriptEngineException e) {
+			throw new ServiceException(e.getMessage());
+		}
 	}
 
+	private void updateConfiguration() {
+		if (this.service != null) {
+			Service s = IotHubDataAccess.getInstance().updateService(
+					service, service.getName(), service.getMetadata(), this.configuration, service.bootAtStartup());
+			if (s == null) {
+				System.err.println("I could not save the configuration to the db");
+			}
+			else {
+				service = s;
+			}
+		}
+	}
+	
 	/* (non-Javadoc)
 	 * @see fi.helsinki.cs.iot.hub.model.service.Service#isConfigured()
 	 */
@@ -85,17 +114,16 @@ public class JavascriptRunnableService implements RunnableService {
 	}
 
 	/* (non-Javadoc)
-	 * @see fi.helsinki.cs.iot.hub.model.service.Service#needConfiguration()
+	 * @see fi.helsinki.cs.iot.hub.model.enabler.Plugin#needConfiguration()
 	 */
 	@Override
 	public boolean needConfiguration() throws ServiceException {
-		DuktapeJavascriptEngineWrapper jsEngineWrapper = 
-				new DuktapeJavascriptEngineWrapper(this, mode);
+		DuktapeJavascriptEngineWrapper jsEngine = 
+				new DuktapeJavascriptEngineWrapper();
 		try {
-			return jsEngineWrapper.serviceNeedConfiguration(service.getServiceInfo().getName(), script);
-		}
-		catch (JavascriptEngineException e) {
-			throw new ServiceException(e.getTag() + ": " + e.getMessage());
+			return jsEngine.pluginNeedConfiguration(jname, jscript);
+		} catch (JavascriptEngineException e) {
+			throw new ServiceException(e.getMessage());
 		}
 	}
 
@@ -106,8 +134,8 @@ public class JavascriptRunnableService implements RunnableService {
 
 
 	private void cancelAllEvents() {
-		if (runningJsEngine != null) {
-			runningJsEngine.stopAllEvents(true);
+		if (wrapper != null) {
+			wrapper.stopAllEvents(true);
 		}
 		else {
 			Log.w(TAG, "The javascript engine does not look like it is running");
@@ -119,19 +147,15 @@ public class JavascriptRunnableService implements RunnableService {
 			Log.d(TAG, "The thread is already started");
 			return;
 		}
-		final JavascriptRunnableService jsrservice = this;
 		thread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-				runningJsEngine = new DuktapeJavascriptEngineWrapper(jsrservice, mode);
 				try {
-					runningJsEngine.run(
-							service.getServiceInfo().getName(), script, service.getConfig());
+					wrapper.run(service.getServiceInfo().getName(), jscript, configuration);
 				} catch (JavascriptEngineException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				runningJsEngine = null;
 			}
 		});
 		thread.start();

@@ -62,10 +62,11 @@ public class ServiceManager {
 		// If the service does not exist, I need to create one
 		if (runnableService == null) {
 			if (serviceHelper == null) {
+				System.out.println(TAG);
 				Log.e(TAG, "Trying to instanciate a runnable service when no helper has been set");
 				return null;
 			}
-			runnableService = serviceHelper.createService(service);
+			runnableService = serviceHelper.createRunnableService(service);
 			if (runnableService == null) {
 				Log.e(TAG, "The runnable service could not be created");
 			}

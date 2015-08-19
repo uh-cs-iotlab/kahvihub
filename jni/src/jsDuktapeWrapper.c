@@ -18,39 +18,15 @@ extern void poll_register(duk_context *ctx);
 extern void register_active_socket_list(duk_context *ctx);
 extern void register_tcp_socket(duk_context *ctx);
 extern void register_xml_http_request(duk_context *ctx);
+extern void poll_register(duk_context *ctx);
+extern void eventloop_register(duk_context *ctx);
+extern int eventloop_run(duk_context *ctx);
+extern void register_settimeout(duk_context *ctx);
 
 void print_context(const char *prefix, duk_context *ctx) {
 	duk_push_context_dump(ctx);
 	printf("%s, %s\n", prefix, duk_to_string(ctx, -1));
 	duk_pop(ctx);
-}
-
-int wrapped_compile_execute(duk_context *ctx) {
-	int comp_flags = 0;
-
-	// Compile input and place it into global _USERCODE
-	duk_compile(ctx, comp_flags);
-	duk_push_global_object(ctx);
-	duk_insert(ctx, -2);  // [ ... global func ]
-	duk_put_prop_string(ctx, -2, "_USERCODE");
-	duk_pop(ctx);
-
-	// Start a zero timer which will call _USERCODE from within
-	// the event loop.
-	fprintf(stderr, "set _USERCODE timer\n");
-	fflush(stderr);
-	duk_eval_string(ctx, "setTimeout(function() { _USERCODE(); }, 0);");
-	duk_pop(ctx);
-
-	// Finally, launch eventloop.  This call only returns after the
-	//eventloop terminates.
-	// At the moment, I just handle the Ecmascript version of loops
-	fprintf(stderr, "calling EventLoop.run()\n");
-	fflush(stderr);
-	duk_eval_string(ctx, "EventLoop.run();");
-	duk_pop(ctx);
-
-	return 0;
 }
 
 void myFatal (duk_context *ctx, duk_errcode_t code, const char *msg) {
@@ -88,6 +64,8 @@ const char* loadScriptString(JNIEnv *env, duk_context *ctx, jstring script) {
 		char str[80];
 		sprintf(str, "Script error: %s\n", duk_safe_to_string(ctx, -1));
 		throwException(env, "checkService", str);
+		fprintf(stderr, "%s\n", str);
+		fflush(stderr);
 		return NULL;
 	}
 
@@ -201,7 +179,7 @@ int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 
 	int has_tcp = hasTcpSockets(env, obj);
 	int has_http = hasHttpRequest(env, obj);
-	//int hasEventLoop = hasEventLoop(env, obj);
+	int has_eventloop = hasEventLoop(env, obj);
 
 	if (needJNIEnv(has_tcp, has_http)) {
 		//I need access to the JNIEnv in my native_request_send
@@ -225,6 +203,13 @@ int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 		register_xml_http_request(ctx);
 	}
 
+	if (has_eventloop) {
+		poll_register(ctx);
+		eventloop_register(ctx);
+		//register_settimeout(ctx);
+		duk_eval_file(ctx, "c_eventloop.js");
+	}
+
 	duk_push_global_object(ctx);
 	duk_push_c_function(ctx, native_check_exit_requested, 0);
 	duk_put_prop_string(ctx, -2, "checkNativeExitRequested");
@@ -235,20 +220,6 @@ int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 	duk_put_prop_string(ctx, -2, "makeConfigurationPersistant");
 	duk_pop(ctx);  // pop global
 
-	/*jclass objclass = (*env)->GetObjectClass(env, obj);
-	jmethodID mid = (*env)->GetMethodID(env, objclass, "getInitFiles", "()[Ljava/lang/String;");
-	if (mid == NULL) {
-		return -2;
-	}
-	jobjectArray result = (*env)->CallObjectMethod(env, obj, mid);
-	if (result == NULL) {
-		return -1;
-	}
-	jsize length = (*env)->GetArrayLength(env, (jobjectArray)result);
-	for (int i = 0; i < length; i++) {
-		jstring initScript = (jstring) (*env)->GetObjectArrayElement(env, (jobjectArray)result, i);
-		loadScriptFile(env, ctx, initScript);
-	}*/
 	return 1;
 }
 
@@ -344,136 +315,141 @@ JNIEXPORT jstring JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascript
 }
 
 JNIEXPORT jboolean JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascriptEngineWrapper_checkService
-(JNIEnv *env, jobject thisObj, jstring serviceName, jstring serviceScript) {
-	/*duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, &myFatal);
+(JNIEnv *env, jobject thisObj, jstring jpluginName, jstring jscript) {
+	duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, &myFatal);
 	if (!ctx) {
 		throwException(env, "checkService", "Failed to create a Duktape heap");
 		return JNI_FALSE;
 	}
 
-	int res;
-	if ((res = loadEnvironment(env, thisObj, ctx)) != 0) {
+	if (!loadScriptString(env, ctx, jscript)) {
+		duk_destroy_heap(ctx);
+		return JNI_FALSE;
+	}
+
+	const char *pluginName = (*env)->GetStringUTFChars(env, jpluginName, 0);
+	duk_push_global_object(ctx);
+	duk_push_string(ctx, pluginName);
+	if(duk_get_prop(ctx, -2) == 0) {
+		duk_pop_n(ctx, 2);
 		char str[80];
-		sprintf(str, "Could not load the environment (%d)", res);
+		sprintf(str, "Plugin %s is unknown",pluginName);
 		throwException(env, "checkService", str);
 		duk_destroy_heap(ctx);
 		return JNI_FALSE;
 	}
 
-	res = loadScriptString(env, ctx, serviceScript);
-	if (res != 0) {
-		fprintf(stderr, "I could not load the script for some reason!");
-		throwException(env, "checkService", "I could not load the script for some reason!");
-		duk_destroy_heap(ctx);
-		return JNI_FALSE;
+	char *methods[] = {"needConfiguration", "checkConfiguration", "configure", "run"};
+	for (int i = 0; i < sizeof(methods)/sizeof(char*); i++) {
+		int res;
+		if ((res = library_has_prop(env, ctx, methods[i])) != 1) {
+			char str[80];
+			sprintf(str, "The plugin %s has no method %s", pluginName, methods[i]);
+			throwException(env, "checkService", str);
+			duk_destroy_heap(ctx);
+			return JNI_FALSE;
+		}
 	}
-
-	res = serviceHasFunction(env, ctx, serviceName, "needConfiguration");
-	if (res <= 0) {
-		char str[80];
-		sprintf(str, "The service has no method needConfiguration (%d)", res);
-		fprintf(stderr, "The service has no method needConfiguration (%d)\n", res);
-		throwException(env, "checkService", str);
-		duk_destroy_heap(ctx);
-		return JNI_FALSE;
-	}
-
-	res = serviceHasFunction(env, ctx, serviceName, "run");
-	if (res <= 0) {
-		char str[80];
-		sprintf(str, "The service has no method run (%d)", res);
-		fprintf(stderr, "The service has no method run (%d)\n", res);
-		throwException(env, "checkService", str);
-		duk_destroy_heap(ctx);
-		return JNI_FALSE;
-	}
-
-	duk_destroy_heap(ctx);*/
-	return JNI_FALSE;
+	duk_destroy_heap(ctx);
+	return JNI_TRUE;
 }
 
+int wrapped_compile_execute(duk_context *ctx) {
 
-JNIEXPORT jboolean JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascriptEngineWrapper_needConfiguration
-(JNIEnv *env, jobject thisObj, jstring jserviceName, jstring jserviceScript) {
-	/*duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, &myFatal);
-	if (!ctx) {
-		throwException(env, "checkService", "Failed to create a Duktape heap");
-	}
+	int comp_flags = 0;
+	int rc;
 
-	int res;
-	if ((res = loadEnvironment(env, thisObj, ctx)) != 0) {
-		char str[80];
-		sprintf(str, "Could not load the environment (%d)", res);
-		throwException(env, "checkService", str);
-	}
-	loadScriptString(env, ctx, jserviceScript);
+	/* Compile input and place it into global _USERCODE */
+	duk_compile(ctx, comp_flags);
+	duk_push_global_object(ctx);
+	duk_insert(ctx, -2);  /* [ ... global func ] */
+	duk_put_prop_string(ctx, -2, "_USERCODE");
+	duk_pop(ctx);
 
-	const char *serviceName = (*env)->GetStringUTFChars(env, jserviceName, 0);
-	char eval_string[80];
-	sprintf(eval_string, "%s.needConfiguration(this);", serviceName);
+	// Start a zero timer which will call _USERCODE from within
+	// the event loop.
+	fprintf(stderr, "set _USERCODE timer\n");
+	fflush(stderr);
+	duk_eval_string(ctx, "setTimeout(function() { _USERCODE(); }, 0);");
+	duk_pop(ctx);
 
-	jboolean returnVal = JNI_FALSE;
-	if (duk_peval_string(ctx, eval_string) != 0) {
-		char str[80];
-		sprintf(str, "Error 3: %s\n", duk_safe_to_string(ctx, -1));
-		throwException(env, "checkService", str);
-		returnVal = JNI_FALSE;
+	fprintf(stderr, "calling eventloop_run()\n");
+	fflush(stderr);
+	rc = duk_safe_call(ctx, eventloop_run, 0 /*nargs*/, 1 /*nrets*/);
+	if (rc != 0) {
+		fprintf(stderr, "eventloop_run() failed: %s\n", duk_to_string(ctx, -1));
+		fflush(stderr);
 	}
-	else if (duk_get_boolean(ctx, -1)) {
-		returnVal = JNI_TRUE;
-	}
-	duk_pop(ctx);  //
-	(*env)->ReleaseStringUTFChars(env, jserviceName, serviceName);
-	duk_destroy_heap(ctx);
-	return returnVal;*/
-	return JNI_FALSE;
+	duk_pop(ctx);
+
+	return 0;
 }
 
 
 JNIEXPORT void JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascriptEngineWrapper_run
-(JNIEnv *env, jobject thisObj, jstring jserviceName, jstring jserviceScript, jstring jserviceConf) {
+(JNIEnv *env, jobject thisObj, jstring jname, jstring jscript, jstring jconf) {
 	duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, &myFatal);
+
 	if (!ctx) {
-		throwException(env, "checkService", "Failed to create a Duktape heap");
+		throwException(env, "run", "Failed to create a Duktape heap");
+		return;
 	}
 
-	poll_register(ctx);
+	loadEnvironment(env, thisObj, ctx);
 
-	int res;
-	if ((res = loadEnvironment(env, thisObj, ctx)) != 0) {
-		char str[80];
-		sprintf(str, "Could not load the environment (%d)", res);
-		throwException(env, "checkService", str);
-	}
-	loadScriptString(env, ctx, jserviceScript);
-
-	const char *serviceName = (*env)->GetStringUTFChars(env, jserviceName, 0);
-	const char *serviceConf = (*env)->GetStringUTFChars(env, jserviceConf, 0);
-
-	char eval_string[1024];
-	sprintf(eval_string, "%s.config = %s;", serviceName, serviceConf);
-	//fprintf(stderr, "%s\n", eval_string);
-	if (duk_peval_string(ctx, eval_string) != 0) {
-		char str[80];
-		sprintf(str, "Script error: %s\n", duk_safe_to_string(ctx, -1));
-		throwException(env, "set config", str);
+	if (!loadScriptString(env, ctx, jscript)) {
+		printf("Can't load my script\n");
+		duk_destroy_heap(ctx);
+		return;
 	}
 
-	memset(&eval_string[0], 0, sizeof(eval_string));
-	sprintf(eval_string, "%s.run(this);", serviceName);
-
-	duk_push_string(ctx, eval_string); // Push the code
-	duk_push_string(ctx, serviceName); // Supposedly the filename
-
-	duk_int_t rc = duk_safe_call(ctx, wrapped_compile_execute, 2 /*nargs*/, 1 /*nret*/);
-	if (rc != DUK_EXEC_SUCCESS) {
-		char str[80];
-		sprintf(str, "Error 3: %s\n", duk_safe_to_string(ctx, -1));
-		throwException(env, "checkService", str);
+	const char *serviceName = (*env)->GetStringUTFChars(env, jname, 0);
+	if (jconf != NULL) {
+		const char *config = (*env)->GetStringUTFChars(env, jconf, 0);
+		//print_context("Before config", ctx);
+		duk_push_global_object(ctx);
+		duk_get_prop_string(ctx, -1, serviceName);
+		duk_get_prop_string(ctx, -1, "configure");
+		duk_swap(ctx, -1, -2);
+		duk_push_string(ctx, config);
+		duk_call_method(ctx, 1);
+		duk_pop_2(ctx);
+		//print_context("After config", ctx);
+		(*env)->ReleaseStringUTFChars(env, jconf, config);
 	}
 
-	duk_pop(ctx);  // ignore result
-	(*env)->ReleaseStringUTFChars(env, jserviceName, serviceName);
-	(*env)->ReleaseStringUTFChars(env, jserviceName, serviceConf);
+
+	duk_push_global_object(ctx);
+	duk_bool_t doWrapp = duk_has_prop_string(ctx, -1, "Poll");
+	duk_pop(ctx);
+
+	if (doWrapp) {
+		fflush(stderr);
+		char eval_code[256];
+		sprintf(eval_code, "%s.run();", serviceName);
+		duk_push_string(ctx, eval_code);
+		duk_push_string(ctx, serviceName);
+
+		duk_int_t rc = duk_safe_call(ctx, wrapped_compile_execute, 2 , 1);
+		if (rc != DUK_EXEC_SUCCESS) {
+			char str[80];
+			sprintf(str, "Error: %s\n", duk_safe_to_string(ctx, -1));
+			throwException(env, "checkService", str);
+			(*env)->ReleaseStringUTFChars(env, jname, serviceName);
+			duk_destroy_heap(ctx);
+			return;
+		}
+
+		duk_pop(ctx);  // ignore result
+	}
+	else {
+		duk_push_global_object(ctx);
+		duk_get_prop_string(ctx, -1, serviceName);
+		duk_get_prop_string(ctx, -1, "run");
+		duk_swap(ctx, -1, -2);
+		duk_call_method(ctx, 0);
+		duk_pop_2(ctx);
+	}
+	(*env)->ReleaseStringUTFChars(env, jname, serviceName);
 	duk_destroy_heap(ctx);
 }

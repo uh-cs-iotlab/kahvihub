@@ -31,7 +31,7 @@ public class Service {
 	private final String name;
 	private final String metadata;
 	private final String config;
-	private final boolean bootOnStartup;
+	private final boolean bootAtStartup;
 
 	/**
 	 * @param id
@@ -48,7 +48,7 @@ public class Service {
 		this.name = name;
 		this.metadata = metadata;
 		this.config = config;
-		this.bootOnStartup = bootAtStartup;
+		this.bootAtStartup = bootAtStartup;
 	}
 
 	/**
@@ -89,12 +89,13 @@ public class Service {
 	/**
 	 * @return the bootAtStartup
 	 */
-	public boolean bootOnStartup() {
-		return bootOnStartup;
+	public boolean bootAtStartup() {
+		return bootAtStartup;
 	}
 
 	public JSONObject toJSON() throws JSONException {
 		JSONObject jsonObject = new JSONObject();
+		jsonObject.put("id", id);
 		jsonObject.put("name", name);
 		if (metadata != null) {
 			jsonObject.put("metadata", metadata);
@@ -102,8 +103,8 @@ public class Service {
 		if (config != null) {
 			jsonObject.put("config", config);
 		}
-		jsonObject.put("bootOnStartup", bootOnStartup);
-		jsonObject.put("serviceInfo", serviceInfo.toJSON());
+		jsonObject.put("bootAtStartup", bootAtStartup);
+		jsonObject.put("plugin", serviceInfo.toJSON());
 		return jsonObject;
 	}
 }

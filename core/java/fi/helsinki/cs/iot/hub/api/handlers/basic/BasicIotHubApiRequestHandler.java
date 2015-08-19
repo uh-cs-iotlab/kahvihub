@@ -34,6 +34,8 @@ import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.api.request.IotHubRequest.Type;
 import fi.helsinki.cs.iot.hub.model.enabler.JavascriptPluginHelperImpl;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
+import fi.helsinki.cs.iot.hub.model.service.JavascriptRunnableServiceHelper;
+import fi.helsinki.cs.iot.hub.model.service.ServiceManager;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
@@ -64,6 +66,11 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 					new JavascriptPluginHelperImpl(libdir));
 			this.subHandlers.put(Type.PLUGIN, 
 					new PluginRequestHandler(libdir));
+			
+			ServiceManager.getInstance().setServiceHelper(new JavascriptRunnableServiceHelper(libdir));
+			//Then the services
+			this.subHandlers.put(Type.SERVICE, 
+					new ServiceRequestHandler());
 		}
 		else {
 			Log.w(TAG, "The libdir path is null, this is a bad idea");
@@ -77,9 +84,7 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 		this.subHandlers.put(Type.FEED, 
 				new FeedRequestHandler());
 
-		//Then the services
-		this.subHandlers.put(Type.SERVICE, 
-				new ServiceRequestHandler());
+		
 
 		//Add the list of supported methods
 		for(IotHubApiRequestHandler handler : subHandlers.values()) {
