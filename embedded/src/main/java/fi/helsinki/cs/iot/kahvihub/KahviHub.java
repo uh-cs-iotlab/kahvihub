@@ -28,15 +28,12 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import fi.helsinki.cs.iot.hub.api.handlers.basic.BasicIotHubApiRequestHandler;
-import fi.helsinki.cs.iot.hub.api.handlers.basic.ListHttpRequestHandler;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.model.enabler.NativePluginHelper;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.utils.Logger;
 import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
-import fi.helsinki.cs.iot.kahvihub.admin.AdminHttpRequestHandler;
 import fi.helsinki.cs.iot.kahvihub.conf.ConfigurationFileParser;
 import fi.helsinki.cs.iot.kahvihub.conf.ConfigurationParsingException;
 import fi.helsinki.cs.iot.kahvihub.conf.HubConfig;
@@ -124,10 +121,6 @@ public class KahviHub {
 					HubConfig hubConfig = ConfigurationFileParser.parseConfigurationFile(configFile);
 					Path libdir = Paths.get(hubConfig.getLibdir());
 					final IotHubHTTPD server = new IotHubHTTPD(hubConfig.getPort(), libdir);
-					ListHttpRequestHandler handler = new ListHttpRequestHandler();
-					handler.addHttpRequestHandler(new AdminHttpRequestHandler(hubConfig.getLibdir()), 0); //Max priority for the admin page
-					handler.addHttpRequestHandler(new BasicIotHubApiRequestHandler(libdir), 1);
-					server.setHttpRequestHandler(handler);
 					init(hubConfig);
 					try {
 						server.start();
