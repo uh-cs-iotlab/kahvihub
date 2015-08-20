@@ -63,9 +63,7 @@ const char* loadScriptString(JNIEnv *env, duk_context *ctx, jstring script) {
 	if (duk_peval_string(ctx, nativeScript) != 0) {
 		char str[80];
 		sprintf(str, "Script error: %s\n", duk_safe_to_string(ctx, -1));
-		throwException(env, "checkService", str);
-		fprintf(stderr, "%s\n", str);
-		fflush(stderr);
+		throwException(env, "loadScriptString", str);
 		return NULL;
 	}
 
@@ -80,7 +78,7 @@ void loadScriptFile(JNIEnv *env, duk_context *ctx, jstring script) {
 	if (duk_peval_file(ctx, nativeScript) != 0) {
 		char str[80];
 		sprintf(str, "Script error: %s\n", duk_safe_to_string(ctx, -1));
-		throwException(env, "checkService", str);
+		throwException(env, "loadScriptFile", str);
 	}
 	(*env)->ReleaseStringUTFChars(env, script, nativeScript);
 	duk_pop(ctx);
@@ -181,19 +179,18 @@ int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 	int has_http = hasHttpRequest(env, obj);
 	int has_eventloop = hasEventLoop(env, obj);
 
-	if (needJNIEnv(has_tcp, has_http)) {
-		//I need access to the JNIEnv in my native_request_send
-		duk_push_global_object(ctx);
-		duk_push_pointer(ctx, env);
-		duk_put_prop_string(ctx, -2, "JNIEnv");
-		duk_pop(ctx);  // pop global
 
-		//I need access to the jobject obj
-		duk_push_global_object(ctx);
-		duk_push_pointer(ctx, obj);
-		duk_put_prop_string(ctx, -2, "DuktapeJavascriptEngineWrapper");
-		duk_pop(ctx);  // pop global
-	}
+	//I need access to the JNIEnv in my native_request_send
+	duk_push_global_object(ctx);
+	duk_push_pointer(ctx, env);
+	duk_put_prop_string(ctx, -2, "JNIEnv");
+	duk_pop(ctx);  // pop global
+
+	//I need access to the jobject obj
+	duk_push_global_object(ctx);
+	duk_push_pointer(ctx, obj);
+	duk_put_prop_string(ctx, -2, "DuktapeJavascriptEngineWrapper");
+	duk_pop(ctx);  // pop global
 
 	if (has_tcp) {
 		register_tcp_socket(ctx);
@@ -206,8 +203,7 @@ int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 	if (has_eventloop) {
 		poll_register(ctx);
 		eventloop_register(ctx);
-		//register_settimeout(ctx);
-		duk_eval_file(ctx, "c_eventloop.js");
+		register_settimeout(ctx);
 	}
 
 	duk_push_global_object(ctx);
@@ -298,11 +294,13 @@ JNIEXPORT jstring JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascript
 		throwException(env, "getLibraryOutput", "Failed to create a Duktape heap");
 		return NULL;
 	}
+
 	loadEnvironment(env, thisObj, ctx);
 	if (!loadScriptString(env, ctx, jscript)) {
 		duk_destroy_heap(ctx);
 		return NULL;
 	}
+
 	const char *res = loadScriptString(env, ctx, jcommandToEvaluate);
 	if (!res) {
 		throwException(env, "getLibraryOutput", "I could not load the command for some reason!");
@@ -368,13 +366,13 @@ int wrapped_compile_execute(duk_context *ctx) {
 
 	// Start a zero timer which will call _USERCODE from within
 	// the event loop.
-	fprintf(stderr, "set _USERCODE timer\n");
-	fflush(stderr);
+	//fprintf(stderr, "set _USERCODE timer\n");
+	//fflush(stderr);
 	duk_eval_string(ctx, "setTimeout(function() { _USERCODE(); }, 0);");
 	duk_pop(ctx);
 
-	fprintf(stderr, "calling eventloop_run()\n");
-	fflush(stderr);
+	//fprintf(stderr, "calling eventloop_run()\n");
+	//fflush(stderr);
 	rc = duk_safe_call(ctx, eventloop_run, 0 /*nargs*/, 1 /*nrets*/);
 	if (rc != 0) {
 		fprintf(stderr, "eventloop_run() failed: %s\n", duk_to_string(ctx, -1));

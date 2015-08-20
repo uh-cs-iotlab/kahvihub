@@ -11,12 +11,30 @@ allprojects {
 
 project(':core') {
 	apply plugin: 'java'
-	version = '1.0'
+	version = '0.1.0'
+	
+	jar {
+    	baseName = 'kahvihub-core'
+    	version =  '0.1.0'
+	}
+	
 }
 
 project(':embedded') {
 	
 	apply plugin: 'application'
-	apply plugin: 'java'
 	
+	jar {
+    	baseName = 'kahvihub-embedded'
+    	version =  '0.1.0'
+    	manifest {
+        	attributes 'Implementation-Title': 'Full Java implementation of the IoT Hub',
+            		   'Implementation-Version': version
+    	}
+	}
+	
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.6'
 }

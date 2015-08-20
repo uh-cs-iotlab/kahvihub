@@ -63,6 +63,23 @@ public class DuktapeJavascriptEngineWrapper {
 	private JavascriptedIotHubCode javascriptedIotHubCode;
 	private int lastSocketId;
 	private final int modes;
+	
+	//TODO in the future I would like to have this done directly with C
+	public static final String minifiedEventloopJs = "function setTimeout(e,t){var n,o,i;if(\"number \"!=typeof t)throw new TypeError(\"delay is not a number\");"
+			+ "if(\"string\"==typeof e)n=eval.bind(this,e);else{if(\"function\"!=typeof e)throw new TypeError(\"callback is not a function/string\");"
+			+ "arguments.length>2?(o=Array.prototype.slice.call(arguments,2),o.unshift(this),n=e.bind.apply(e,o)):n=e}return i=EventLoop.createTimer(n,t,!0)}"
+			+ "function clearTimeout(e){if(\"number\"!=typeof e)throw new TypeError(\"timer ID is not a number\");EventLoop.deleteTimer(e)}function "
+			+ "setInterval(e,t){var n,o,i;if(\"number\"!=typeof t)throw new TypeError(\"delay is not a number\");if(\"string\"==typeof e)n=eval.bind(this,e);"
+			+ "else{if(\"function\"!=typeof e)throw new TypeError(\"callback is not a function/string\");arguments.length>2?(o=Array.prototype.slice.call(arguments,2),"
+			+ "o.unshift(this),n=e.bind.apply(e,o)):n=e}return i=EventLoop.createTimer(n,t,!1)}function clearInterval(e){if(\"number\"!=typeof e)throw new TypeError(\""
+			+ "timer ID is not a number\");EventLoop.deleteTimer(e)}function requestEventLoopExit(){EventLoop.requestExit()}EventLoop.socketListening={},"
+			+ "EventLoop.socketReading={},EventLoop.socketConnecting={},EventLoop.fdPollHandler=function(e,t){var n,o,i;if(t&Poll.POLLIN)if(o=this.socketReading[e])"
+			+ "{if(n=Socket.read(e),0===n.length)return void this.close(e);o(e,n)}else o=this.socketListening[e],o&&(i=Socket.accept(e),o(i.fd,i.addr,i.port));"
+			+ "t&Poll.POLLOUT&&(o=this.socketConnecting[e],o&&(delete this.socketConnecting[e],o(e))),0!==(t&~(Poll.POLLIN|Poll.POLLOUT))&&this.close(e)},"
+			+ "EventLoop.server=function(e,t,n){var o=Socket.createServerSocket(e,t);this.socketListening[o]=n,this.listenFd(o,Poll.POLLIN)},"
+			+ "EventLoop.connect=function(e,t,n){var o=Socket.connect(e,t);this.socketConnecting[o]=n,this.listenFd(o,Poll.POLLOUT)},"
+			+ "EventLoop.close=function(e){EventLoop.listenFd(e,0),delete this.socketListening[e],delete this.socketReading[e],delete this.socketConnecting[e],Socket.close(e)},"
+			+ "EventLoop.setReader=function(e,t){this.socketReading[e]=t,this.listenFd(e,Poll.POLLIN)},EventLoop.write=function(e,t){Socket.write(e,Duktape.Buffer(t))};";
 
 	// load the built libraries
 	static {
@@ -151,10 +168,10 @@ public class DuktapeJavascriptEngineWrapper {
 		if (configurationForJS == null) {
 			return false;
 		}
-		String res = getLibraryOutput(pluginName, script, 
-				String.format("%s.configure(\"%s\"); %s.%s(\"%s\");", 
-						pluginName, configurationForJS,
-						pluginName, functionName, featureName));
+		String evalScript = String.format("%s.configure(\"%s\"); %s.%s(\"%s\");", 
+				pluginName, configurationForJS,
+				pluginName, functionName, featureName);
+		String res = getLibraryOutput(pluginName, script, evalScript);
 		if (res == null || !(res.equals("true") || res.equals("false"))) {
 			throw new JavascriptEngineException(TAG, 
 					String.format("The method %s.%s(\"%s\") does not provide a boolean value (returned %s)", 

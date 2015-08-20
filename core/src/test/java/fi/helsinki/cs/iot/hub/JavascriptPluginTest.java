@@ -54,6 +54,7 @@ import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
+import fi.helsinki.cs.iot.hub.jsengine.TcpSocket;
 import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo.Type;
 
 public class JavascriptPluginTest {
@@ -770,7 +771,7 @@ public class JavascriptPluginTest {
 
 		File temp = null;
 		try {
-			temp = File.createTempFile("tempfile", ".tmp", libdir.toFile());
+			temp = File.createTempFile("Pile", ".tmp", libdir.toFile());
 			temp.deleteOnExit();
 			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(temp));
 			bufferedWriter.write(pluginScript);
@@ -837,6 +838,16 @@ public class JavascriptPluginTest {
 	public final void testPostValueRealRouter() {
 		int port = 50000;
 		String address = "10.254.1.1";
+		
+		boolean isHostAvailable = false;
+		try {
+			isHostAvailable = TcpSocket.checkHostAvailability(address, port);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		org.junit.Assume.assumeTrue(isHostAvailable);
+		
 		String enablerName = "HelvarnetEnabler";
 		try {
 			Plugin helvarnetPlugin = getHelvarnetPlugin(enablerName);

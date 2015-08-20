@@ -105,7 +105,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	@Override
 	public boolean configurePersistant(String configuration) {
 		this.configuration = configuration;
-		if (this.enabler != null) {
+		// For testing I need to check if I have a instance of db
+		if (this.enabler != null && IotHubDataAccess.getInstance() != null) {
 			Enabler e = IotHubDataAccess.getInstance().updateEnabler(enabler, configuration);
 			if (e == null) {
 				System.err.println("I could not save the persistant configuration to the db");

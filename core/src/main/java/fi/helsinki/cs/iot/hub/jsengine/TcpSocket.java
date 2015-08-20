@@ -33,7 +33,7 @@ public class TcpSocket extends Socket {
 
 	private final int id;
 
-	protected static boolean checkHostAvailability(String host, int port) throws IOException {
+	public static boolean checkHostAvailability(String host, int port) throws IOException {
 		Socket s = new Socket();
 		s.connect(new InetSocketAddress(host,port),500);
 		s.close();
@@ -51,7 +51,8 @@ public class TcpSocket extends Socket {
 				new InputStreamReader(getInputStream()));
 		if (message != null) {
 			out.println(message);
-			return in.readLine();
+			String response = in.readLine();
+			return response;
 		}
 		out.close();
 		in.close();

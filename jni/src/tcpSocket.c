@@ -97,7 +97,7 @@ int jni_tcp_socket_send(duk_context *ctx, int id_socket, const char *msg) {
 
 			jstring jresponse = (jstring) (*env)->CallObjectMethod(env, obj, mid, id_socket, jmsg);
 			if ((*env)->ExceptionCheck(env)) {
-				duk_pop_2(ctx);
+				//duk_pop_2(ctx);
 				print_context("Got an exception while sending a message", ctx);
 				return 0;
 			}

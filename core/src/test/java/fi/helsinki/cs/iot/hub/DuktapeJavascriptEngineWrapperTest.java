@@ -29,6 +29,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,7 +53,7 @@ public class DuktapeJavascriptEngineWrapperTest {
 	 */
 	@Test
 	public final void testPerformJavaHttpRequest() {
-		TemporaryServer ts = new TemporaryServer();
+		SimpleHTTPServer ts = new SimpleHTTPServer();
 		try {
 			ts.start();
 			String response = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://localhost:8111", null);
@@ -73,7 +75,7 @@ public class DuktapeJavascriptEngineWrapperTest {
 		jsScript += "res = xhr.responseText;}};";
 		jsScript += "xhr.send(null); res;";
 		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(jsScript);
-		TemporaryServer ts = new TemporaryServer();
+		SimpleHTTPServer ts = new SimpleHTTPServer();
 		try {
 			ts.start();
 			DuktapeJavascriptEngineWrapper wrapper = 
@@ -102,11 +104,11 @@ public class DuktapeJavascriptEngineWrapperTest {
 		} 
 	}
 
-	private class TemporaryServer extends NanoHTTPD {
+	private class SimpleHTTPServer extends NanoHTTPD {
 
 		private JSONObject json;
 
-		public TemporaryServer() {
+		public SimpleHTTPServer() {
 			super("127.0.0.1", 8111);
 			json = new JSONObject();
 			try {
@@ -123,19 +125,104 @@ public class DuktapeJavascriptEngineWrapperTest {
 		}
 	}	
 
+	private class SimpleTcpServer {
+		List<String> msgReceivedByServer;
+		boolean stopTheThread;
+		final int port;
+
+		public SimpleTcpServer(int port) {
+			this.port = port;
+			this.stopTheThread = false;
+			msgReceivedByServer = new ArrayList<String>();
+		}
+
+		class SimpleTcpServerThread implements Runnable {
+
+			private Socket socket;
+
+			public SimpleTcpServerThread(Socket s) throws IOException {
+				this.socket = s;
+			}
+
+			@Override
+			public void run() {
+				// do something with in and out
+				if (stopTheThread) {
+					return;
+				}
+				try {
+					PrintWriter out =
+							new PrintWriter(socket.getOutputStream(), true);
+					BufferedReader in = new BufferedReader(
+							new InputStreamReader(socket.getInputStream()));
+					String inputLine = in.readLine();
+					if (inputLine != null) {
+						msgReceivedByServer.add(inputLine);
+						out.println(inputLine);//Just echo
+					}
+					out.close();
+					in.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					fail(e.getMessage());
+				}
+			}
+		}
+
+		void start() {
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					final ExecutorService service = Executors.newCachedThreadPool();
+					try {
+						ServerSocket serverSocket = new ServerSocket(port);
+						while(!stopTheThread) {
+							Socket socket = serverSocket.accept();
+							service.submit(new SimpleTcpServerThread(socket));
+						}
+						serverSocket.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						fail(e.getMessage());
+					}
+				}
+			}).start();
+		}
+
+		void stop() throws IOException {
+			this.stopTheThread = true;
+		}
+
+		List<String> getMsgReceivedByServer() {
+			return msgReceivedByServer;
+		}
+
+		@Override
+		public String toString() {
+			String msgList = "messages received = [ ";
+			for(String msg : getMsgReceivedByServer()) {
+				msgList += String.format("'%s'\n", msg);
+			}
+			return msgList + "]";
+		}
+	}
+
 	@Test
 	public final void testTcpSocket() {
 
-		int port = 50000;
-		TemporaryTcpServer tcpServer = new TemporaryTcpServer(port);
+		int port = 50005;
+		SimpleTcpServer tcpServer = new SimpleTcpServer(port);
 		tcpServer.start();
 
-		
+
 		String jsScript = "var sc = TCPSocket();";
-		jsScript += "sc.onsocketreceive = function(msg) { print('Messaged received:' + msg); sc.close(); };";
+		jsScript += "sc.onsocketreceive = function(msg) { print('Messaged received:' + msg); };";
 		jsScript += "sc.onsocketerror = function(msg) { print('Error:' + msg); };";
 		jsScript += String.format("sc.connect('%s', %d);", "127.0.0.1", port);
 		jsScript += "sc.send('I want to send this message');";
+		jsScript += "sc.close();";
 		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(jsScript);
 		DuktapeJavascriptEngineWrapper dtw = 
 				new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
@@ -145,66 +232,21 @@ public class DuktapeJavascriptEngineWrapperTest {
 			fail(e.getMessage());
 		}
 		// At that point, I should have stop the tcp socket
-		tcpServer.stop();
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		try {
+			tcpServer.stop();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 		assertEquals(1, tcpServer.getMsgReceivedByServer().size());
 		assertEquals("I want to send this message", tcpServer.getMsgReceivedByServer().get(0));
-	}
-
-	private class TemporaryTcpServer {
-		List<String> msgReceivedByServer = new ArrayList<String>();
-		boolean stopTheThread;
-		int port;
-		Thread thread;
-
-		TemporaryTcpServer(int port) {
-			this.port = port;
-			this.stopTheThread = false;
-		}
-
-		void start() {
-			thread = new Thread(new Runnable() {
-				@Override
-				public void run() {
-					ServerSocket serverSocket = null;
-					try {
-						serverSocket = new ServerSocket(port);
-						Socket clientSocket = serverSocket.accept();
-						PrintWriter out =
-								new PrintWriter(clientSocket.getOutputStream(), true);
-						BufferedReader in = new BufferedReader(
-								new InputStreamReader(clientSocket.getInputStream()));
-						String inputLine;
-						while (!stopTheThread && (inputLine = in.readLine()) != null) {
-							msgReceivedByServer.add(inputLine);
-							out.println("So nice of you to send me a message");
-						}
-						in.close();
-						out.close();
-					} catch (IOException e) {
-						fail(e.getMessage());
-					}
-					finally {
-						if (serverSocket != null) {
-							try {
-								serverSocket.close();
-							} catch (IOException e) {
-								fail(e.getMessage());
-							}
-						}
-					}
-				}
-			});
-			thread.start();
-		}
-
-		void stop() {
-			this.stopTheThread = true;
-		}
-
-		List<String> getMsgReceivedByServer() {
-			return msgReceivedByServer;
-		}
-
 	}
 
 }
