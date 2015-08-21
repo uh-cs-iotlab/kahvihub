@@ -316,7 +316,7 @@ public class IotHubHTTPDTest {
 				+ " return true; }";
 		pluginScript += String.format("%s.checkConfiguration = %s;", pluginName, checkConfigurationFunction);
 		pluginScript += String.format("%s.configure = function(config) { if (this.checkConfiguration(config)) {this.config = JSON.parse(config);}};", pluginName);
-		pluginScript += String.format("%s.run = function() { if (this.config) { print('I got a config value: ' + this.config.value);} else {print('I have nothing to print');} setTimeout(function() {print('TEST');}, 1000);};", pluginName);
+		pluginScript += String.format("%s.run = function() { setTimeout(function() {print('TEST');}, 1000);};", pluginName);
 
 		File temp = null;
 		try {

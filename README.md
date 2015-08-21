@@ -8,6 +8,12 @@ Authors
 + http://www.cs.helsinki.fi/u/mineraud/
 + http://github.com/jmineraud
 
+Known issues
+------------
+
+* Some test for the PluginManager are sometimes failing
+  * current solution is to retry until it works
+
 Licence
 -------
 

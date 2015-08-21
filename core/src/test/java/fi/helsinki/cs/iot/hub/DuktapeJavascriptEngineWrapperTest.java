@@ -248,5 +248,24 @@ public class DuktapeJavascriptEngineWrapperTest {
 		assertEquals(1, tcpServer.getMsgReceivedByServer().size());
 		assertEquals("I want to send this message", tcpServer.getMsgReceivedByServer().get(0));
 	}
+	
+	@Test
+	public final void testNativeRunScript() {
+		String helloWorld = "Hello world!";
+		String script = "var echo = function(data) {return data}; echo(\"" + helloWorld + "\");";
+		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(script);
+		DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
+		try {
+			String res = wrapper.runScript(script);
+			assertEquals(helloWorld, res);
+		} catch (JavascriptEngineException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		
+	}
+	
+	
 
 }

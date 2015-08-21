@@ -91,7 +91,7 @@ public class IotHubHTTPD extends NanoHTTPD {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		Log.i(TAG, "Server started");
+		Log.i(TAG, "Server started on port " + this.port);
 	}
 
 	@Override

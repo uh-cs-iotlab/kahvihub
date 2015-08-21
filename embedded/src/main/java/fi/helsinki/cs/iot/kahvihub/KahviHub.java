@@ -81,25 +81,15 @@ public class KahviHub {
 		NativePluginHelper nativePluginHelper = new KahvihubNativePluginHelper(config.getLibdir());
 		PluginManager.getInstance().setNativePluginHelper(nativePluginHelper);
 	}
-
-	private static void setJavascriptRunnableServiceHelper(HubConfig config) {
-		/*List<String> initFiles = new ArrayList<String>();
-		initFiles.add("ecma_eventloop.js");
-		initFiles.add("httpRequest.js");
-		JavascriptRunnableServiceHelper javascriptRunnableServiceHelper = new JavascriptRunnableServiceHelper(config.getLibdir(), initFiles);
-		ServiceManager.getInstance().setServiceHelper(javascriptRunnableServiceHelper);*/
-	}
 	
 	//TODO init should be reading a config file
 	public static void init(HubConfig config) {
 		setLogger(config);
 		setIotHubDataHandler(config);
 		setNativePluginHelper(config);
-		setJavascriptRunnableServiceHelper(config);
 	}
 
 	public static void main(String[] args) throws InterruptedException {
-		
 		// create Options object
 		Options options = new Options();
 		// add conf file option
@@ -113,7 +103,7 @@ public class KahviHub {
 				Log.e(TAG, "The config file option was not provided");
 				// automatically generate the help statement
 				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp("c", options);
+				formatter.printHelp("d", options);
 				System.exit(-1);
 			}
 			else {
@@ -143,12 +133,14 @@ public class KahviHub {
 						Thread.sleep(1000);
 					}
 				} catch (ConfigurationParsingException | IOException e){
+					System.out.println("1:"  + e.getMessage());
 					Log.e(TAG, e.getMessage());
 					System.exit(-1);
 				} 
 			}
 
 		} catch (ParseException e) {
+			System.out.println(e.getMessage());
 			Log.e(TAG, e.getMessage());
 			System.exit(-1);
 		}		

@@ -21,7 +21,7 @@ extern void register_xml_http_request(duk_context *ctx);
 extern void poll_register(duk_context *ctx);
 extern void eventloop_register(duk_context *ctx);
 extern int eventloop_run(duk_context *ctx);
-extern void register_settimeout(duk_context *ctx);
+extern void register_settimeout(duk_context *ctx, JNIEnv *env, jobject thisObj);
 
 void print_context(const char *prefix, duk_context *ctx) {
 	duk_push_context_dump(ctx);
@@ -203,7 +203,7 @@ int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 	if (has_eventloop) {
 		poll_register(ctx);
 		eventloop_register(ctx);
-		register_settimeout(ctx);
+		register_settimeout(ctx, env, obj);
 	}
 
 	duk_push_global_object(ctx);

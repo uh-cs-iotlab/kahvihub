@@ -93,9 +93,8 @@ public class ConfigurationFileParser {
 		String dbname = getStringProperty(root, "dbname");
 		int dbversion = getIntProperty(root, "dbversion");
 		boolean debugMode = getBooleanProperty(root, "debug");
-		String dashboard = getStringProperty(root, "dashboard");
 		
 		return new HubConfig(name, port, libdir, logdir, 
-				dbdir, dbname, dbversion, dashboard, debugMode);
+				dbdir, dbname, dbversion, debugMode);
 	}
 }

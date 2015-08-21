@@ -29,4 +29,7 @@ test {
 
 run {
     jvmArgs = ['-Djava.library.path=../jni']
+    if(project.hasProperty('conf')){
+    	 run.args project.conf.split(',')
+    }
 }

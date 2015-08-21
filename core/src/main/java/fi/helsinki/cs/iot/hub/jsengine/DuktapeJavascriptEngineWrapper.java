@@ -52,6 +52,11 @@ import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
  */
 public class DuktapeJavascriptEngineWrapper {
 
+	// load the built libraries
+	static {
+		System.loadLibrary("jsDuktapeJni");
+	}
+
 	private static final String TAG = "DuktapeJavascriptEngineWrapper";
 
 	public static final int TCP_SOCKET = 1;
@@ -63,9 +68,9 @@ public class DuktapeJavascriptEngineWrapper {
 	private JavascriptedIotHubCode javascriptedIotHubCode;
 	private int lastSocketId;
 	private final int modes;
-	
+
 	//TODO in the future I would like to have this done directly with C
-	public static final String minifiedEventloopJs = "function setTimeout(e,t){var n,o,i;if(\"number \"!=typeof t)throw new TypeError(\"delay is not a number\");"
+	public String minifiedEventloopJs = "function setTimeout(e,t){var n,o,i;if(\"number\"!=typeof t)throw new TypeError(\"delay is not a number\");"
 			+ "if(\"string\"==typeof e)n=eval.bind(this,e);else{if(\"function\"!=typeof e)throw new TypeError(\"callback is not a function/string\");"
 			+ "arguments.length>2?(o=Array.prototype.slice.call(arguments,2),o.unshift(this),n=e.bind.apply(e,o)):n=e}return i=EventLoop.createTimer(n,t,!0)}"
 			+ "function clearTimeout(e){if(\"number\"!=typeof e)throw new TypeError(\"timer ID is not a number\");EventLoop.deleteTimer(e)}function "
@@ -80,11 +85,6 @@ public class DuktapeJavascriptEngineWrapper {
 			+ "EventLoop.connect=function(e,t,n){var o=Socket.connect(e,t);this.socketConnecting[o]=n,this.listenFd(o,Poll.POLLOUT)},"
 			+ "EventLoop.close=function(e){EventLoop.listenFd(e,0),delete this.socketListening[e],delete this.socketReading[e],delete this.socketConnecting[e],Socket.close(e)},"
 			+ "EventLoop.setReader=function(e,t){this.socketReading[e]=t,this.listenFd(e,Poll.POLLIN)},EventLoop.write=function(e,t){Socket.write(e,Duktape.Buffer(t))};";
-
-	// load the built libraries
-	static {
-		System.loadLibrary("jsDuktapeJni");
-	}
 
 	public DuktapeJavascriptEngineWrapper() {
 		this(null, 0);
@@ -435,5 +435,5 @@ public class DuktapeJavascriptEngineWrapper {
 		return false;
 	}
 
-	
+
 }

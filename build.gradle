@@ -7,6 +7,7 @@ allprojects {
 	repositories {
         mavenCentral()
     }
+    
 }
 
 project(':core') {
@@ -16,6 +17,10 @@ project(':core') {
 	jar {
     	baseName = 'kahvihub-core'
     	version =  '0.1.0'
+	}
+	
+	tasks.withType(JavaCompile) {
+		options.encoding = 'UTF-8'
 	}
 	
 }
@@ -33,8 +38,12 @@ project(':embedded') {
     	}
 	}
 	
+	tasks.withType(JavaCompile) {
+		options.encoding = 'UTF-8'
+	}
+	
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.6'
+    gradleVersion = '2.2.1'
 }

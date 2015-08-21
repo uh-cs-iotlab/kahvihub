@@ -29,12 +29,11 @@ public class HubConfig {
 	private String dbdir;
 	private String dbname;
 	private int dbversion;
-	private String dashboard;
 	private boolean debugMode;
 	
 	public HubConfig(String name, int port, String libdir, String logdir, 
 			String dbdir, String dbname, int dbversion,
-			String dashboard, boolean debugMode) {
+			boolean debugMode) {
 		this.name = name;
 		this.port = port;
 		this.libdir = libdir;
@@ -42,14 +41,12 @@ public class HubConfig {
 		this.dbdir = dbdir;
 		this.dbname = dbname;
 		this.dbversion = dbversion;
-		this.dashboard = dashboard;
 		this.debugMode = debugMode;
 	}
 	
-	public HubConfig(int port, String libdir, String logdir, String dbdir, String dbname, int dbversion,
-			String dashboard, boolean debugMode) {
+	public HubConfig(int port, String libdir, String logdir, String dbdir, String dbname, int dbversion, boolean debugMode) {
 		this("iothub", port, libdir, logdir, 
-				dbdir, dbname, dbversion, dashboard, debugMode);
+				dbdir, dbname, dbversion, debugMode);
 	}
 
 	public String getName() {
@@ -66,10 +63,6 @@ public class HubConfig {
 
 	public String getDbdir() {
 		return dbdir;
-	}
-
-	public String getDashboard() {
-		return dashboard;
 	}
 
 	public String getDbName() {
