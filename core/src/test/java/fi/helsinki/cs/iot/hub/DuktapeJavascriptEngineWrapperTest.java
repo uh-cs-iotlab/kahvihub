@@ -263,7 +263,21 @@ public class DuktapeJavascriptEngineWrapperTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		
+	}
+	
+	@Test
+	public final void testNativeGetLibraryOutput() {
+		String libraryName = "Test";
+		String script = "var Test = { var test = function() {return 'test';} }; ";
+		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(script);
+		DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
+		try {
+			assertEquals("test", wrapper.getLibraryOutput(libraryName, script, "Test.test();"));
+		} catch (JavascriptEngineException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
 	
 	

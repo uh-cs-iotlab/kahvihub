@@ -327,6 +327,7 @@ public class JavascriptPluginTest {
 			items.put(oneHourToComeEvent);
 
 			json.put("items", items);
+			System.out.println(json.toString());
 			return json;
 		}
 
@@ -397,7 +398,6 @@ public class JavascriptPluginTest {
 				+ " var processResults = " + processResults + ";"
 				+ " return JSON.stringify(processResults(res));}";
 		pluginScript += String.format("%s.getFeatureValue = %s;", pluginName, getValueFunction);
-
 		File temp = null;
 		try {
 			temp = File.createTempFile("tempfile", ".tmp", libdir.toFile());
@@ -433,6 +433,7 @@ public class JavascriptPluginTest {
 			assertTrue(gcalPlugin.configure(config.toString()));
 			FeatureDescription fd = new FeatureDescription("events", "TimePeriod");
 			String res = gcalPlugin.getValue(fd);
+			Thread.sleep(100);
 			assertNotNull(res);
 			JSONArray array = new JSONArray(res);
 			assertEquals(3, array.length());
@@ -442,7 +443,7 @@ public class JavascriptPluginTest {
 			array = new JSONArray(res);
 			assertEquals(2, array.length());
 			server.stop();
-		} catch (IOException | JSONException | PluginException e) {
+		} catch (IOException | JSONException | PluginException | InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			fail(e.getMessage());
