@@ -41,13 +41,13 @@ import fi.helsinki.cs.iot.hub.utils.Logger;
 public class IotHubHTTPD extends NanoHTTPD {
 
 	private static final String TAG = "IotHubHTTPD";
-	private String host;
 	private int port;
 	private Path libdir;
 	private HttpRequestHandler requestHandler;
 
 	public IotHubHTTPD(int port, Path libdir) {
 		super("127.0.0.1", port);
+		this.port = port;
 		this.libdir = libdir;
 		this.requestHandler = new BasicIotHubApiRequestHandler(this.libdir);
 	}
@@ -62,10 +62,6 @@ public class IotHubHTTPD extends NanoHTTPD {
 
 	public void setIotHubDataHandler(IotHubDataHandler handler) {
 		IotHubDataAccess.setInstance(handler);
-	}
-
-	public String getHost() {
-		return this.host;
 	}
 
 	public int getPort() {

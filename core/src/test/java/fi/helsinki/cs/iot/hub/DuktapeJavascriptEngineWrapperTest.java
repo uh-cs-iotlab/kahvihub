@@ -268,7 +268,7 @@ public class DuktapeJavascriptEngineWrapperTest {
 	@Test
 	public final void testNativeGetLibraryOutput() {
 		String libraryName = "Test";
-		String script = "var Test = { var test = function() {return 'test';} }; ";
+		String script = "var Test = { test: function() {return 'test';} }; ";
 		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(script);
 		DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
 		try {

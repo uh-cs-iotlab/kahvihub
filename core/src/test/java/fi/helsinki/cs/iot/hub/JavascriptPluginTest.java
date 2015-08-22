@@ -88,6 +88,7 @@ public class JavascriptPluginTest {
 				case 2:
 					// Set to a string
 					pluginScript += String.format("%s.%s = \"yes\";", pluginName, method);
+					break;
 				case 3:
 					// Set to a int
 					pluginScript += String.format("%s.%s = 1;", pluginName, method);
@@ -123,6 +124,7 @@ public class JavascriptPluginTest {
 		} catch (IOException e) {
 			fail(e.getMessage());
 		}
+			
 		PluginInfo info = new PluginInfo(1, Type.JAVASCRIPT, pluginName, null, temp.getName());
 		assertNotNull(info);
 		Enabler enabler = new Enabler(1, enablerName, null, info, null);
@@ -327,7 +329,6 @@ public class JavascriptPluginTest {
 			items.put(oneHourToComeEvent);
 
 			json.put("items", items);
-			System.out.println(json.toString());
 			return json;
 		}
 

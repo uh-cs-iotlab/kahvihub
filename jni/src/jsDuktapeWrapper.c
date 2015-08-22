@@ -58,30 +58,21 @@ void throwException(JNIEnv *env, const char* tag, const char *message) {
 }
 
 const char* loadScriptString(JNIEnv *env, duk_context *ctx, jstring script) {
-	const char *nativeScript = (*env)->GetStringUTFChars(env, script, 0);
 
-	if (duk_peval_string(ctx, nativeScript) != 0) {
-		char str[80];
+	const char *nativeScript = (*env)->GetStringUTFChars(env, script, 0);
+	duk_int_t res_code =  duk_peval_string(ctx, nativeScript);
+	(*env)->ReleaseStringUTFChars(env, script, nativeScript);
+
+	if (res_code != 0) {
+		char str[1024];
+		memset(&str, 0, sizeof(str));
 		sprintf(str, "Script error: %s\n", duk_safe_to_string(ctx, -1));
 		throwException(env, "loadScriptString", str);
 		return NULL;
 	}
-
-	(*env)->ReleaseStringUTFChars(env, script, nativeScript);
-	const char *res = duk_safe_to_string(ctx, -1);
-	return res;
-}
-
-void loadScriptFile(JNIEnv *env, duk_context *ctx, jstring script) {
-	const char *nativeScript = (*env)->GetStringUTFChars(env, script, 0);
-	printf("Eval script file: %s\n", nativeScript);
-	if (duk_peval_file(ctx, nativeScript) != 0) {
-		char str[80];
-		sprintf(str, "Script error: %s\n", duk_safe_to_string(ctx, -1));
-		throwException(env, "loadScriptFile", str);
+	else {
+		return duk_safe_to_string(ctx, -1);
 	}
-	(*env)->ReleaseStringUTFChars(env, script, nativeScript);
-	duk_pop(ctx);
 }
 
 int hasAdditionalFunctionality(JNIEnv *env, jobject obj, const char *function) {
@@ -296,19 +287,19 @@ JNIEXPORT jstring JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascript
 	}
 
 	loadEnvironment(env, thisObj, ctx);
-	if (!loadScriptString(env, ctx, jscript)) {
+
+	if (loadScriptString(env, ctx, jscript) == NULL) {
 		duk_destroy_heap(ctx);
 		return NULL;
 	}
 
 	const char *res = loadScriptString(env, ctx, jcommandToEvaluate);
-	if (!res) {
+	if (res == NULL) {
 		throwException(env, "getLibraryOutput", "I could not load the command for some reason!");
 		duk_destroy_heap(ctx);
 		return NULL;
 	}
 	duk_destroy_heap(ctx);
-	//fprintf(stderr, "After: %s\n", res);
 	return (*env)->NewStringUTF(env, res);
 }
 

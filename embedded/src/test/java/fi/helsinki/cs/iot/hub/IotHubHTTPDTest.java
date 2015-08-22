@@ -386,7 +386,6 @@ public class IotHubHTTPDTest {
 				e.printStackTrace();
 				fail(e.getMessage());
 			}
-			System.out.println(res.trim());
 
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block

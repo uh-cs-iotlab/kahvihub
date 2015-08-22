@@ -58,10 +58,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public boolean needConfiguration() throws PluginException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper();
 		try {
-			return jsEngine.pluginNeedConfiguration(jname, jscript);
+			return wrapper.pluginNeedConfiguration(jname, jscript);
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -89,10 +87,8 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 			return true;
 		}
 		close();
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper();
 		try {
-			boolean res = jsEngine.pluginCheckConfiguration(jname, jscript, pluginConfig);
+			boolean res = wrapper.pluginCheckConfiguration(jname, jscript, pluginConfig);
 			if (res) {
 				return configurePersistant(pluginConfig);
 			}
