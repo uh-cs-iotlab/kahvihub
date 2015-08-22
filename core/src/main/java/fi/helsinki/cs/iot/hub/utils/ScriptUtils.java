@@ -3,6 +3,7 @@
  */
 package fi.helsinki.cs.iot.hub.utils;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -32,7 +33,8 @@ public class ScriptUtils {
 		String line = null;
 		try {
 			while ((line = reader.readLine()) != null) {
-				sb.append(line + "\n");
+				//sb.append(line + "\n");
+				sb.append(line);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -62,28 +64,14 @@ public class ScriptUtils {
 	}
 	
 	public static String encodeBase64FromFile(File file) throws IOException {
-	    InputStream is = new FileInputStream(file);
-
-	    BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-		StringBuilder sb = new StringBuilder();
-
-		String line = null;
-		try {
-			while ((line = reader.readLine()) != null) {
-				String lineWithLine = line + "\n";
-				String encodedLine = Base64.encodeBase64String(lineWithLine.getBytes());
-				sb.append(encodedLine);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				is.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		return sb.toString();
+	    
+		int length = (int)file.length();
+        BufferedInputStream reader = new BufferedInputStream(new FileInputStream(file));
+        byte[] notEncodedBytes = new byte[length];
+        reader.read(notEncodedBytes, 0, length);
+        reader.close();
+     
+        return new String(Base64.encodeBase64(notEncodedBytes, true));
 	}
 	
 	public static String decodeBase64ToString(String encoded) throws IOException {
