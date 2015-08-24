@@ -191,11 +191,11 @@ public class LondonIcc2015Test {
 		static final String QUERY_DEVICE_STATE_BUTTONS_ROOM_2 = ">V:2,C:110,@1.1.2.61#";
 		static final String QUERY_DEVICE_STATE_MULTISENSOR_ROOM_1 = ">V:2,C:110,@1.1.1.62#";
 		static final String QUERY_DEVICE_STATE_MULTISENSOR_ROOM_2 = ">V:2,C:110,@1.1.2.62#";
-		static final String FADE_IN_LUM_ROOM_1 = ">V:2,C:14,L:100,F:200,@1.1.1.1#";
-		static final String FADE_IN_LUM_ROOM_2 = ">V:2,C:14,L:100,F:200,@1.1.2.1#";
-		static final String FADE_OUT_LUM_ROOM_1 = ">V:2,C:14,L:10,F:200,@1.1.1.1#";
-		static final String FADE_OUT_LUM_ROOM_2 = ">V:2,C:14,L:10,F:200,@1.1.2.1#";
-
+		static final String FADE_IN_LUM_ROOM_1 = ">V:2,C:14,L:10,F:200,@1.1.1.1#";
+		static final String FADE_IN_LUM_ROOM_2 = ">V:2,C:14,L:10,F:200,@1.1.2.1#";
+		static final String FADE_OUT_LUM_ROOM_1 = ">V:2,C:14,L:100,F:200,@1.1.1.1#";
+		static final String FADE_OUT_LUM_ROOM_2 = ">V:2,C:14,L:100,F:200,@1.1.2.1#";
+		
 		SimpleHelvarnetRouter(String address, int port) {
 			this.port = port;
 			this.stopTheThread = false;
@@ -343,6 +343,10 @@ public class LondonIcc2015Test {
 		int iothubPort = 8081;
 		String gCalPluginResourceName = "/gCalPlugin.js";
 		String gCalPluginName = "GCalPlugin";
+		String helvarPluginResourceName = "/helvarnetPlugin.js";
+		String helvarPluginName = "HelvarnetPlugin";
+		String lastCallLightPluginName = "LastCallLight";
+		String lastCallLightPluginResourceName = "/lastCallLight.js";
 
 		try {
 			GCalServer gcalServer = new GCalServer(gcalPort);
@@ -389,9 +393,146 @@ public class LondonIcc2015Test {
 			enablerGcal.put("configuration", config);
 
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubPort + "/enablers/", enablerGcal.toString());
-			fail(res);
+			JSONObject resultPostGcalEnabler = new JSONObject(res);
+			assertEquals(1, resultPostGcalEnabler.getInt("id"));
+			assertEquals("CalRoom1", resultPostGcalEnabler.getString("name"));
+			assertEquals(1, resultPostGcalEnabler.getJSONArray("features").length());
+			//TODO, I would need to have more checks on the Json value returned in the future
+			JSONObject gCalFeatureToFeed = new JSONObject();
+			gCalFeatureToFeed.put("enableAsAtomicFeed", true);
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("PUT", "http://127.0.0.1:" + iothubPort + "/enablers/CalRoom1/events", gCalFeatureToFeed.toString());
+			JSONObject expectedFeature = new JSONObject(res);
+			assertEquals(1, expectedFeature.getInt("id"));
+			assertTrue(expectedFeature.getBoolean("isAtomicFeed"));
 			
+			//Now the second enabler for the room 2
+			enablerGcal.put("plugin", 1);
+			enablerGcal.put("name", "CalRoom2");
+			enablerGcal.put("metadata", "An enabler for the calendar of meeting room 2");
+			config.put("calId", "room2");
+			config.put("calKey", gcalKey);
+			enablerGcal.put("configuration", config);
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubPort + "/enablers/", enablerGcal.toString());
+			resultPostGcalEnabler = new JSONObject(res);
+			assertEquals(2, resultPostGcalEnabler.getInt("id"));
+			assertEquals("CalRoom2", resultPostGcalEnabler.getString("name"));
+			assertEquals(1, resultPostGcalEnabler.getJSONArray("features").length());
+			//TODO, I would need to have more checks on the Json value returned in the future
+			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("PUT", "http://127.0.0.1:" + iothubPort + "/enablers/CalRoom2/events", gCalFeatureToFeed.toString());
+			expectedFeature = new JSONObject(res);
+			assertEquals(2, expectedFeature.getInt("id"));
+			assertTrue(expectedFeature.getBoolean("isAtomicFeed"));
+			
+			//Now we check our atomic feeds
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + iothubPort + "/feeds", null);
+			JSONArray feedArray = new JSONArray(res);
+			assertEquals(2, feedArray.length());
+			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + iothubPort + "/feeds/atomicFeature1", null);
+			JSONArray eventArray = new JSONArray(res);
+			assertEquals(2, eventArray.length());
+			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + iothubPort + "/feeds/atomicFeature2", null);
+			eventArray = new JSONArray(res);
+			assertEquals(3, eventArray.length());
+			
+			//Now we need to install the helvarNet plugin
+			File helvarPluginFile = new File(LondonIcc2015Test.class.getResource(helvarPluginResourceName).toURI());
+			assertTrue(helvarPluginFile.exists());
 
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubPort + "/plugins/", 
+					makeJsonObjectForPlugin(helvarPluginName, null, Type.JAVASCRIPT, helvarPluginFile, false).toString());
+			JSONObject resultPostHelvarPlugin = new JSONObject(res);
+			assertEquals(2, resultPostHelvarPlugin.getInt("id"));
+			assertEquals(helvarPluginName, resultPostHelvarPlugin.getString("service"));
+			assertEquals("JAVASCRIPT", resultPostHelvarPlugin.getString("pluginType"));
+			
+			//Now we want install the enabler for the helvarnetPlugin
+			JSONObject enablerHelvar = new JSONObject();
+			enablerHelvar.put("plugin", 2);
+			enablerHelvar.put("name", "helvar");
+			enablerHelvar.put("metadata", "An enabler for the Helvarnet router");
+			config = new JSONObject();
+			config.put("address", "127.0.0.1");
+			config.put("port", helvarPort);
+			enablerHelvar.put("configuration", config);
+
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubPort + "/enablers/", enablerHelvar.toString());
+			JSONObject resultPostHelvarEnabler = new JSONObject(res);
+			assertEquals(3, resultPostHelvarEnabler.getInt("id"));
+			assertEquals("helvar", resultPostHelvarEnabler.getString("name"));
+			assertEquals(2, resultPostHelvarEnabler.getJSONArray("features").length());
+			
+			//Now I need to make the helvarnet feature available as feeds
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("PUT", "http://127.0.0.1:" + iothubPort + "/enablers/helvar/@1.1.1.1", gCalFeatureToFeed.toString());
+			expectedFeature = new JSONObject(res);
+			assertTrue(expectedFeature.getBoolean("isAtomicFeed"));
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("PUT", "http://127.0.0.1:" + iothubPort + "/enablers/helvar/@1.1.2.1", gCalFeatureToFeed.toString());
+			expectedFeature = new JSONObject(res);
+			assertTrue(expectedFeature.getBoolean("isAtomicFeed"));
+			
+			//Now we check our atomic feeds
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + iothubPort + "/feeds", null);
+			feedArray = new JSONArray(res);
+			assertEquals(4, feedArray.length());
+			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + iothubPort + "/feeds/atomicFeature3", null);
+			JSONObject error = new JSONObject(res);
+			assertEquals("Error", error.getString("status"));
+			
+			//Now I need to create the plugin for the application
+			File lastCallLightPluginFile = new File(LondonIcc2015Test.class.getResource(lastCallLightPluginResourceName).toURI());
+			assertTrue(lastCallLightPluginFile.exists());
+
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubPort + "/plugins/", 
+					makeJsonObjectForPlugin(lastCallLightPluginName, null, Type.JAVASCRIPT, lastCallLightPluginFile, true).toString());
+			JSONObject resultPostLastCallLightPlugin = new JSONObject(res);
+			assertEquals(1, resultPostLastCallLightPlugin.getInt("id"));
+			assertEquals(lastCallLightPluginName, resultPostLastCallLightPlugin.getString("service"));
+			assertEquals("JAVASCRIPT", resultPostLastCallLightPlugin.getString("pluginType"));
+			
+			
+			JSONObject jservice = new JSONObject();
+			jservice.put("plugin", 1);
+			jservice.put("name", lastCallLightPluginName);
+			jservice.put("metadata", "The service that does the last call light");		
+			jservice.put("bootAtStartup", false);
+			config = new JSONObject();
+			config.put("server", "http://127.0.0.1:" + iothubPort);
+			config.put("oneshot", true);
+			JSONArray rooms = new JSONArray();
+			JSONObject room1 = new JSONObject();
+			room1.put("calendar", "atomicFeature1");
+			JSONArray lights1 = new JSONArray();
+			lights1.put("atomicFeature3");
+			room1.put("lights", lights1);
+			rooms.put(room1);
+			JSONObject room2 = new JSONObject();
+			room2.put("calendar", "atomicFeature2");
+			JSONArray lights2 = new JSONArray();
+			lights2.put("atomicFeature4");
+			room2.put("lights", lights2);
+			rooms.put(room2);
+			config.put("rooms", rooms);
+			jservice.put("configuration", config);
+
+			// I should get an enable with no features as it is not configured
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubPort + "/services/", jservice.toString());
+			JSONObject expectedService = new JSONObject(res);
+			assertEquals(1, expectedService.getInt("id"));
+			assertTrue(expectedService.has("config"));
+			
+			int currentNumberOfMessage = helvarRouter.getMsgReceivedByServer().size();
+			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + iothubPort + "/services/" + lastCallLightPluginName + "/start", null);
+			long start = System.currentTimeMillis();
+			while(helvarRouter.getMsgReceivedByServer().size() < currentNumberOfMessage + 2) {
+				long now = System.currentTimeMillis();
+				if (now - start > 5000) {
+					fail("The helvernet server have not received the commands in time");
+				}
+			}
 			iotHubHTTPD.stop();
 			helvarRouter.stop();
 			gcalServer.stop();

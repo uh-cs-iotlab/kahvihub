@@ -70,7 +70,7 @@ public class DuktapeJavascriptEngineWrapper {
 	private final int modes;
 
 	//TODO in the future I would like to have this done directly with C
-	public String minifiedEventloopJs = "function setTimeout(e,t){var n,o,i;if(\"number\"!=typeof t)throw new TypeError(\"delay is not a number\");"
+	public String minifiedEventloopJs = "function setTimeout(e,t){print('Time out with time ' + t);var n,o,i;if(\"number\"!=typeof t)throw new TypeError(\"delay is not a number\");"
 			+ "if(\"string\"==typeof e)n=eval.bind(this,e);else{if(\"function\"!=typeof e)throw new TypeError(\"callback is not a function/string\");"
 			+ "arguments.length>2?(o=Array.prototype.slice.call(arguments,2),o.unshift(this),n=e.bind.apply(e,o)):n=e}return i=EventLoop.createTimer(n,t,!0)}"
 			+ "function clearTimeout(e){if(\"number\"!=typeof e)throw new TypeError(\"timer ID is not a number\");EventLoop.deleteTimer(e)}function "
@@ -175,7 +175,7 @@ public class DuktapeJavascriptEngineWrapper {
 		if (res == null || !(res.equals("true") || res.equals("false"))) {
 			throw new JavascriptEngineException(TAG, 
 					String.format("The method %s.%s(\"%s\") does not provide a boolean value (returned %s)", 
-							pluginName, functionName, configurationForJS, res));
+							pluginName, functionName, featureName, res));
 		}
 		return res.equals("true");
 	}
@@ -382,6 +382,11 @@ public class DuktapeJavascriptEngineWrapper {
 		return null;
 	}
 
+	public static String getEcmaEventLoopFilename() {
+		return DuktapeJavascriptEngineWrapper.class.getResource("/ecma_eventloop.js").getFile();
+	}
+	
+	
 	public boolean makePluginConfigurationPersistant(String configuration) {
 		if (javascriptedIotHubCode == null) {
 			Log.e(TAG, "Try to save persistant configuration on a null IoT hub code");

@@ -39,13 +39,16 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	private String configuration;
 	private DuktapeJavascriptEngineWrapper wrapper;
 	private Enabler enabler;
-
+	
+	private Boolean needConfiguration;
+	
 	public JavascriptPlugin(String jname, String jscript, int jsEngineModes) {
 		this(null, jname, jscript, jsEngineModes);
 	}
 	
 	public JavascriptPlugin(Enabler enabler, String jname, String jscript, int jsEngineModes) {
 		this.needToStop = false;
+		this.needConfiguration = null;
 		this.jname = jname;
 		this.jscript = jscript;
 		this.thread = null;
@@ -58,8 +61,13 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	 */
 	@Override
 	public boolean needConfiguration() throws PluginException {
+		if (this.needConfiguration != null) {
+			return this.needConfiguration.booleanValue();
+		}
 		try {
-			return wrapper.pluginNeedConfiguration(jname, jscript);
+			boolean nc = wrapper.pluginNeedConfiguration(jname, jscript);
+			this.needConfiguration = Boolean.valueOf(nc);
+			return nc;
 		} catch (JavascriptEngineException e) {
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
@@ -234,6 +242,7 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 			//TODO I need to escape the double quotes here and make sure that the type is the same than the fd
 			return wrapper.postPluginFeatureValue(jname, jscript, configuration, featureDescription.getName(), data);
 		} catch (JavascriptEngineException e) {
+			e.printStackTrace();
 			throw PluginException.newJavascriptException(e.getMessage());
 		}
 	}

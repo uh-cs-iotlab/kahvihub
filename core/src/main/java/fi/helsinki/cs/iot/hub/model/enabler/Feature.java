@@ -21,7 +21,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
-import fi.helsinki.cs.iot.hub.utils.Log;
 
 /**
  * 
@@ -30,7 +29,7 @@ import fi.helsinki.cs.iot.hub.utils.Log;
  */
 public class Feature extends FeatureDescription implements Comparable<Feature> {
 
-    private static final String TAG = "Feature";
+    //private static final String TAG = "Feature";
 	private Enabler enabler;
     private long id;
     private boolean isAtomicFeed;
@@ -60,7 +59,7 @@ public class Feature extends FeatureDescription implements Comparable<Feature> {
 		try {
 			Plugin plugin = 
 					PluginManager.getInstance().getConfiguredPlugin(enabler);
-			return plugin.isAvailable(this);
+			return plugin.isReadable(this);
 		} catch (PluginException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -70,8 +69,7 @@ public class Feature extends FeatureDescription implements Comparable<Feature> {
 
     public boolean isWritable() {
     	try {
-    		Log.d(TAG, "Checking out if the feature is writable");
-			Plugin plugin = 
+    		Plugin plugin = 
 					PluginManager.getInstance().getConfiguredPlugin(enabler);
 			return plugin.isWritable(this);
 		} catch (PluginException e) {

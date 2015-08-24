@@ -26,10 +26,12 @@ import org.json.JSONObject;
 import fi.helsinki.cs.iot.hub.api.handlers.basic.IotHubApiRequestHandler;
 import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
+import fi.helsinki.cs.iot.hub.model.service.RunnableService;
 import fi.helsinki.cs.iot.hub.model.service.Service;
 import fi.helsinki.cs.iot.hub.model.service.ServiceException;
 import fi.helsinki.cs.iot.hub.model.service.ServiceInfo;
 import fi.helsinki.cs.iot.hub.model.service.ServiceManager;
+import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
 
@@ -40,7 +42,7 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
  */
 public class ServicePostRequestHandler extends IotHubApiRequestHandler {
 
-	//private static final String TAG = "ServicePostRequestHandler";
+	private static final String TAG = "ServicePostRequestHandler";
 	private List<Method> methods;
 
 	public ServicePostRequestHandler() {
@@ -97,7 +99,11 @@ public class ServicePostRequestHandler extends IotHubApiRequestHandler {
 				}
 				else {
 					try {
-						ServiceManager.getInstance().getConfiguredRunnableService(service);
+						RunnableService runnableService = ServiceManager.getInstance().getRunnableService(service);
+						if (config != null && !runnableService.configure(config)) {
+							Log.w(TAG, "Removing the service config because it didnt pass the config phase");
+							service = IotHubDataAccess.getInstance().updateService(service, name, metadata, null, bootAtStartup);
+						}
 					} catch (ServiceException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();

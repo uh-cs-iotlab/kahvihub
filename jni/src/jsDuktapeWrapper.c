@@ -164,6 +164,18 @@ duk_ret_t make_config_persistant(duk_context *ctx) {
 
 }
 
+jstring native_get_ecma_eventloop_resource_filename(JNIEnv *env) {
+	jclass duktape_wrapper_jclass =
+			(*env)->FindClass(env, "fi/helsinki/cs/iot/hub/jsengine/DuktapeJavascriptEngineWrapper");
+	const char *signature =
+			"()Ljava/lang/String;";
+	jmethodID perform_http_jmethodID =
+			(*env)->GetStaticMethodID(env, duktape_wrapper_jclass, "getEcmaEventLoopFilename", signature);
+	jstring jresponse =
+			(jstring) (*env)->CallStaticObjectMethod(env, duktape_wrapper_jclass, perform_http_jmethodID);
+	return jresponse;
+}
+
 int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 
 	int has_tcp = hasTcpSockets(env, obj);
@@ -193,8 +205,14 @@ int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 
 	if (has_eventloop) {
 		poll_register(ctx);
-		eventloop_register(ctx);
-		register_settimeout(ctx, env, obj);
+		//eventloop_register(ctx);
+		//register_settimeout(ctx, env, obj);
+		jstring jresource = native_get_ecma_eventloop_resource_filename(env);
+		const char *resource = (*env)->GetStringUTFChars(env, jresource, 0);
+		if (duk_peval_file_noresult(ctx, resource) != 0) {
+		    printf("eval failed of resource '%s'\n", resource);
+		}
+		(*env)->ReleaseStringUTFChars(env, jresource, resource);
 	}
 
 	duk_push_global_object(ctx);
@@ -224,7 +242,8 @@ JNIEXPORT jstring JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascript
 	const char *res = loadScriptString(env, ctx, script);
 	//print_context("After loading the script", ctx);
 	duk_destroy_heap(ctx);
-	return (*env)->NewStringUTF(env, res);
+	jstring jres = (*env)->NewStringUTF(env, res);
+	return jres;
 }
 
 
@@ -294,13 +313,20 @@ JNIEXPORT jstring JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascript
 	}
 
 	const char *res = loadScriptString(env, ctx, jcommandToEvaluate);
+	//fprintf(stderr, "This is the res: %s\n", res);
+	//fflush(stderr);
 	if (res == NULL) {
 		throwException(env, "getLibraryOutput", "I could not load the command for some reason!");
 		duk_destroy_heap(ctx);
 		return NULL;
 	}
+	jstring jres = (*env)->NewStringUTF(env, res);
+	//const char *nativeRes = (*env)->GetStringUTFChars(env, jres, 0);
+	//fprintf(stderr, "This is the native res: %s\n", nativeRes);
+	//fflush(stderr);
+	//(*env)->ReleaseStringUTFChars(env, jres, nativeRes);
 	duk_destroy_heap(ctx);
-	return (*env)->NewStringUTF(env, res);
+	return jres;
 }
 
 JNIEXPORT jboolean JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascriptEngineWrapper_checkService
@@ -346,7 +372,7 @@ JNIEXPORT jboolean JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascrip
 int wrapped_compile_execute(duk_context *ctx) {
 
 	int comp_flags = 0;
-	int rc;
+	//int rc;
 
 	/* Compile input and place it into global _USERCODE */
 	duk_compile(ctx, comp_flags);
@@ -364,11 +390,15 @@ int wrapped_compile_execute(duk_context *ctx) {
 
 	//fprintf(stderr, "calling eventloop_run()\n");
 	//fflush(stderr);
-	rc = duk_safe_call(ctx, eventloop_run, 0 /*nargs*/, 1 /*nrets*/);
-	if (rc != 0) {
-		fprintf(stderr, "eventloop_run() failed: %s\n", duk_to_string(ctx, -1));
-		fflush(stderr);
-	}
+	//rc = duk_safe_call(ctx, eventloop_run, 0 /*nargs*/, 1 /*nrets*/);
+	//if (rc != 0) {
+	//	fprintf(stderr, "eventloop_run() failed: %s\n", duk_to_string(ctx, -1));
+	//	fflush(stderr);
+	//}
+	//duk_pop(ctx);
+	//fprintf(stderr, "calling EventLoop.run()\n");
+	//fflush(stderr);
+	duk_eval_string(ctx, "EventLoop.run();");
 	duk_pop(ctx);
 
 	return 0;

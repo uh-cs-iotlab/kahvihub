@@ -82,7 +82,7 @@ public class AtomicFeed extends Feed {
 
     @Override
     public String getValue() {
-        if (feature == null) {
+    	if (feature == null) {
             Log.w(TAG, "The feature should not be null, EVER");
         } else if (!feature.isAvailable()) {
         	Log.w(TAG, "The feature " + feature.getId() +
@@ -122,7 +122,9 @@ public class AtomicFeed extends Feed {
         	try {
 				Plugin plugin = PluginManager.getInstance().getConfiguredPlugin(enabler);
 				if (plugin != null) {
-					return plugin.postValue(feature, value);
+					boolean result = plugin.postValue(feature, value);
+					return result;
+					
 				}
 			} catch (PluginException e) {
 				// TODO Auto-generated catch block
