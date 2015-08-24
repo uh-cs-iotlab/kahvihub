@@ -849,7 +849,7 @@ public class JavascriptPluginTest {
 			e1.printStackTrace();
 		}
 		org.junit.Assume.assumeTrue(isHostAvailable);
-		
+		System.err.println("Doing the real router test");
 		String enablerName = "HelvarnetEnabler";
 		try {
 			Plugin helvarnetPlugin = getHelvarnetPlugin(enablerName);

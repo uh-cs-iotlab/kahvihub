@@ -140,7 +140,7 @@ public class PluginPostRequestHandler extends IotHubApiRequestHandler {
 					int id = (!isService) ? IotHubDataAccess.getInstance().getPlugins().size() : IotHubDataAccess.getInstance().getServiceInfos().size();
 					File ld = this.libdir.toFile();
 					if (!(ld.exists() && ld.isDirectory())) {
-						System.err.println(ld.getAbsolutePath());
+						System.err.println("Libdir folder " + ld.getAbsolutePath() + " not found");
 					}
 					Path pathInLibFolder = Paths.get(this.libdir.toString(), String.format("javscript-%s-%s-%d.js", (!isService) ? "plugin" : "service", pluginName, id));
 					InputStream stream = new ByteArrayInputStream(script.getBytes(StandardCharsets.UTF_8));

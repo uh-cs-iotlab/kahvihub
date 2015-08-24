@@ -72,7 +72,6 @@ public class ServicePutRequestHandler extends IotHubApiRequestHandler {
 
 				if (!jdata.has("configuration") && !jdata.has("name") && !jdata.has("metadata") && !jdata.has("bootAtStartup")) {
 					Log.w(TAG, "No need to update if nothing is new");
-					System.err.println("No need to update if nothing is new");
 					return getResponseOk(service.toJSON().toString());
 				}
 

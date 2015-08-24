@@ -74,7 +74,6 @@ public class EnablerPutRequestHandler extends IotHubApiRequestHandler {
 
 				if (!jdata.has("configuration") && !jdata.has("name") && !jdata.has("metadata")) {
 					Log.w(TAG, "No need to update if nothing is new");
-					System.err.println("No need to update if nothing is new");
 					return getResponseOk(enabler.toJSON().toString());
 				}
 

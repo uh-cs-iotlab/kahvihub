@@ -395,7 +395,6 @@ public class DuktapeJavascriptEngineWrapper {
 			try {
 				InputStream link = (DuktapeJavascriptEngineWrapper.class.getResourceAsStream("/ecma_eventloop.js"));
 			    Files.copy(link, file.getAbsoluteFile().toPath());
-			    System.err.println(file.getAbsolutePath());
 			    return file.getAbsolutePath();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
