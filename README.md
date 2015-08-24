@@ -11,8 +11,7 @@ Authors
 Known issues
 ------------
 
-* Some test for the PluginManager are sometimes failing
-  * current solution is to retry until it works
+* At the moment, the default JVM version should be 1.7
 
 Licence
 -------
