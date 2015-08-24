@@ -1,5 +1,5 @@
 /*
- * fi.helsinki.cs.iot.hub.model.enabler.JavascriptPlugin
+ * fi.helsinki.cs.iot.hub.model.enabler.JavascriptStringPlugin
  * v0.1
  * 2015
  *
@@ -17,6 +17,7 @@
  */
 package fi.helsinki.cs.iot.hub.model.enabler;
 
+import java.nio.file.Path;
 import java.util.Map;
 
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
@@ -30,7 +31,7 @@ import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  *
  */
-public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
+public class JavascriptStringPlugin implements Plugin, JavascriptedIotHubCode {
 
 	private Thread thread;
 	private boolean needToStop;
@@ -42,17 +43,17 @@ public class JavascriptPlugin implements Plugin, JavascriptedIotHubCode {
 	
 	private Boolean needConfiguration;
 	
-	public JavascriptPlugin(String jname, String jscript, int jsEngineModes) {
-		this(null, jname, jscript, jsEngineModes);
+	public JavascriptStringPlugin(Path libdir, String jname, String jscript, int jsEngineModes) {
+		this(libdir, null, jname, jscript, jsEngineModes);
 	}
 	
-	public JavascriptPlugin(Enabler enabler, String jname, String jscript, int jsEngineModes) {
+	public JavascriptStringPlugin(Path libdir, Enabler enabler, String jname, String jscript, int jsEngineModes) {
 		this.needToStop = false;
 		this.needConfiguration = null;
 		this.jname = jname;
 		this.jscript = jscript;
 		this.thread = null;
-		this.wrapper = new DuktapeJavascriptEngineWrapper(this, jsEngineModes);
+		this.wrapper = new DuktapeJavascriptEngineWrapper(libdir, this, jsEngineModes);
 		this.enabler = enabler;
 	}
 	

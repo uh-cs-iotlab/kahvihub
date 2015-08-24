@@ -164,16 +164,18 @@ duk_ret_t make_config_persistant(duk_context *ctx) {
 
 }
 
-jstring native_get_ecma_eventloop_resource_filename(JNIEnv *env) {
-	jclass duktape_wrapper_jclass =
-			(*env)->FindClass(env, "fi/helsinki/cs/iot/hub/jsengine/DuktapeJavascriptEngineWrapper");
-	const char *signature =
-			"()Ljava/lang/String;";
-	jmethodID perform_http_jmethodID =
-			(*env)->GetStaticMethodID(env, duktape_wrapper_jclass, "getEcmaEventLoopFilename", signature);
-	jstring jresponse =
-			(jstring) (*env)->CallStaticObjectMethod(env, duktape_wrapper_jclass, perform_http_jmethodID);
-	return jresponse;
+jstring native_get_ecma_eventloop_resource_filename(JNIEnv *env, jobject obj) {
+	jclass objclass = (*env)->GetObjectClass(env, obj);
+	if (objclass != NULL) {
+		jmethodID mid = (*env)->GetMethodID(env, objclass, "getEcmaEventLoopFilename", "()Ljava/lang/String;");
+		if (mid != NULL) {
+			jstring jresponse = (jstring) (*env)->CallObjectMethod(env, obj, mid);
+			if(jresponse != NULL) {
+				return jresponse;
+			}
+		}
+	}
+	return NULL;
 }
 
 int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
@@ -207,10 +209,10 @@ int loadEnvironment(JNIEnv *env, jobject obj, duk_context *ctx) {
 		poll_register(ctx);
 		//eventloop_register(ctx);
 		//register_settimeout(ctx, env, obj);
-		jstring jresource = native_get_ecma_eventloop_resource_filename(env);
+		jstring jresource = native_get_ecma_eventloop_resource_filename(env, obj);
 		const char *resource = (*env)->GetStringUTFChars(env, jresource, 0);
 		if (duk_peval_file_noresult(ctx, resource) != 0) {
-		    printf("eval failed of resource '%s'\n", resource);
+			printf("eval failed of resource '%s'\n", resource);
 		}
 		(*env)->ReleaseStringUTFChars(env, jresource, resource);
 	}

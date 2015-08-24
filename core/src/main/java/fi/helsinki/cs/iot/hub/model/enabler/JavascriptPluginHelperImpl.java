@@ -50,7 +50,7 @@ public class JavascriptPluginHelperImpl implements JavascriptPluginHelper {
 		int mode = DuktapeJavascriptEngineWrapper.EVENT_LOOP |
 				DuktapeJavascriptEngineWrapper.HTTP_REQUEST |
 				DuktapeJavascriptEngineWrapper.TCP_SOCKET;
-		JavascriptPlugin plugin = new JavascriptPlugin(pluginName, script, mode);
+		JavascriptStringPlugin plugin = new JavascriptStringPlugin(libdir, pluginName, script, mode);
 		return plugin;
 	}
 	
@@ -63,7 +63,7 @@ public class JavascriptPluginHelperImpl implements JavascriptPluginHelper {
 		int mode = DuktapeJavascriptEngineWrapper.EVENT_LOOP |
 				DuktapeJavascriptEngineWrapper.HTTP_REQUEST |
 				DuktapeJavascriptEngineWrapper.TCP_SOCKET;
-		JavascriptPlugin plugin = new JavascriptPlugin(enabler, pluginName, script, mode);
+		JavascriptStringPlugin plugin = new JavascriptStringPlugin(libdir, enabler, pluginName, script, mode);
 		return plugin;
 	}
 
@@ -71,7 +71,7 @@ public class JavascriptPluginHelperImpl implements JavascriptPluginHelper {
 	public void checkPlugin(String pluginName, String script)
 			throws PluginException {
 		DuktapeJavascriptEngineWrapper wrapper = 
-				new DuktapeJavascriptEngineWrapper();
+				new DuktapeJavascriptEngineWrapper(libdir);
 		try {
 			boolean checked = wrapper.checkPlugin(pluginName, script);
 			if (!checked) {

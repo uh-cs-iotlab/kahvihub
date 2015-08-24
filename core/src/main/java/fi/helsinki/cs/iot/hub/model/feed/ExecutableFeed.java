@@ -17,6 +17,7 @@
  */
 package fi.helsinki.cs.iot.hub.model.feed;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import org.json.JSONArray;
@@ -101,8 +102,8 @@ public class ExecutableFeed extends Feed {
 		return description;
 	}*/
 
-	public boolean executeScript(String script) {
-		DuktapeJavascriptEngineWrapper djew = new DuktapeJavascriptEngineWrapper();
+	public boolean executeScript(Path libdir, String script) {
+		DuktapeJavascriptEngineWrapper djew = new DuktapeJavascriptEngineWrapper(libdir);
 		try {
 			return djew.runScript(script) != null;
 		} catch (JavascriptEngineException e) {

@@ -17,6 +17,7 @@
  */
 package fi.helsinki.cs.iot.hub.api.handlers.feeds;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,12 +51,14 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 
 	private static final String TAG = "FeedPostRequestHandler";
 	private List<Method> methods;
+	private Path libdir;
 	/**
 	 * 
 	 */
-	public FeedPostRequestHandler() {
+	public FeedPostRequestHandler(Path libdir) {
 		this.methods = new ArrayList<>();
 		this.methods.add(Method.POST);	
+		this.libdir = libdir;
 	}
 
 	/* (non-Javadoc)
@@ -189,7 +192,7 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 			return composedFeed.isWritable();
 		case EXECUTABLE:
 			ExecutableFeed executableFeed = (ExecutableFeed)feed;
-			return executableFeed.executeScript(data);
+			return executableFeed.executeScript(libdir, data);
 		default:
 			return false;
 		}
@@ -282,7 +285,7 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 	}
 
 	private Response handlePostExecutableFeed(ExecutableFeed feed, String data) {
-		if (data != null && feed.executeScript(data)) {
+		if (data != null && feed.executeScript(libdir, data)) {
 			return getResponseOk("");
 		}
 		else {

@@ -773,7 +773,7 @@ public class JavascriptPluginTest {
 
 		File temp = null;
 		try {
-			temp = File.createTempFile("Pile", ".tmp", libdir.toFile());
+			temp = File.createTempFile("test", ".tmp", libdir.toFile());
 			temp.deleteOnExit();
 			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(temp));
 			bufferedWriter.write(pluginScript);

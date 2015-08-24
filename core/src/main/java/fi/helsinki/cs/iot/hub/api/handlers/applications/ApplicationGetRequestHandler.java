@@ -46,11 +46,11 @@ import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Response;
 public class ApplicationGetRequestHandler extends IotHubApiRequestHandler {
 
 	private static final String TAG = "ApplicationGetRequestHandler";
-	//private Path dir;
+	private Path libdir;
 	private List<Method> methods;
 
-	public ApplicationGetRequestHandler(Path dir) {
-		//this.dir = dir;
+	public ApplicationGetRequestHandler(Path libdir) {
+		this.libdir = libdir;
 		this.methods = new ArrayList<>();
 		this.methods.add(Method.GET);	
 	}
@@ -76,7 +76,7 @@ public class ApplicationGetRequestHandler extends IotHubApiRequestHandler {
 					// A Simple JSON Response Read
 					InputStream instream = entity.getContent();
 					String result= convertStreamToString(instream);
-					DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper();
+					DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(libdir);
 					wrapper.runScript(result);
 					instream.close();
 				}
@@ -102,7 +102,7 @@ public class ApplicationGetRequestHandler extends IotHubApiRequestHandler {
 					// A Simple JSON Response Read
 					InputStream instream = entity.getContent();
 					String result= convertStreamToString(instream);
-					DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper();
+					DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(libdir);
 					wrapper.runScript(result);
 					instream.close();
 				}

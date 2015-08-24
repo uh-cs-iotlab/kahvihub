@@ -17,6 +17,7 @@
  */
 package fi.helsinki.cs.iot.hub.api.handlers.feeds;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,10 +37,10 @@ public class FeedRequestHandler extends IotHubApiRequestHandler {
 	private Map<Method, IotHubApiRequestHandler> subHandlers;
 	private List<Method> supportedMethods;
 
-	public FeedRequestHandler() {
+	public FeedRequestHandler(Path libdir) {
 		this.subHandlers = new HashMap<>();
 		this.subHandlers.put(Method.GET, new FeedGetRequestHandler());
-		this.subHandlers.put(Method.POST, new FeedPostRequestHandler());
+		this.subHandlers.put(Method.POST, new FeedPostRequestHandler(libdir));
 		this.subHandlers.put(Method.PUT, new FeedPutRequestHandler());
 		this.subHandlers.put(Method.DELETE, new FeedDeleteRequestHandler());
 		this.supportedMethods = new ArrayList<>(subHandlers.keySet());

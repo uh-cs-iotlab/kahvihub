@@ -17,6 +17,8 @@
  */
 package fi.helsinki.cs.iot.hub.model.service;
 
+import java.nio.file.Path;
+
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptEngineException;
@@ -27,7 +29,7 @@ import fi.helsinki.cs.iot.hub.utils.Log;
  * 
  * @author Julien Mineraud <julien.mineraud@cs.helsinki.fi>
  */
-public class JavascriptRunnableService implements RunnableService {
+public class JavascriptStringRunnableService implements RunnableService {
 
 	private static final String TAG = "JavascriptRunnableService";
 	
@@ -38,15 +40,15 @@ public class JavascriptRunnableService implements RunnableService {
 	private DuktapeJavascriptEngineWrapper wrapper;
 	private Service service;
 	
-	public JavascriptRunnableService(String jname, String jscript, int jsEngineModes) {
-		this(null, jname, jscript, jsEngineModes);
+	public JavascriptStringRunnableService(Path libdir, String jname, String jscript, int jsEngineModes) {
+		this(libdir, null, jname, jscript, jsEngineModes);
 	}
 	
-	public JavascriptRunnableService(Service service, String jname, String jscript, int jsEngineModes) {
+	public JavascriptStringRunnableService(Path libdir, Service service, String jname, String jscript, int jsEngineModes) {
 		this.jname = jname;
 		this.jscript = jscript;
 		this.thread = null;
-		this.wrapper = new DuktapeJavascriptEngineWrapper(this, jsEngineModes);
+		this.wrapper = new DuktapeJavascriptEngineWrapper(libdir, this, jsEngineModes);
 		this.service = service;
 	}
 
@@ -70,10 +72,8 @@ public class JavascriptRunnableService implements RunnableService {
 			return true;
 		}
 		stop();
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper();
 		try {
-			boolean res = jsEngine.pluginCheckConfiguration(jname, jscript, pluginConfig);
+			boolean res = wrapper.pluginCheckConfiguration(jname, jscript, pluginConfig);
 			if (res) {
 				this.configuration = pluginConfig;
 				updateConfiguration();
@@ -118,10 +118,8 @@ public class JavascriptRunnableService implements RunnableService {
 	 */
 	@Override
 	public boolean needConfiguration() throws ServiceException {
-		DuktapeJavascriptEngineWrapper jsEngine = 
-				new DuktapeJavascriptEngineWrapper();
 		try {
-			return jsEngine.pluginNeedConfiguration(jname, jscript);
+			return wrapper.pluginNeedConfiguration(jname, jscript);
 		} catch (JavascriptEngineException e) {
 			throw new ServiceException(e.getMessage());
 		}

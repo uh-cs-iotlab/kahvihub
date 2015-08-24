@@ -47,7 +47,7 @@ public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 		int mode = DuktapeJavascriptEngineWrapper.EVENT_LOOP |
 				DuktapeJavascriptEngineWrapper.HTTP_REQUEST |
 				DuktapeJavascriptEngineWrapper.TCP_SOCKET;
-		JavascriptRunnableService javascriptRunnableService = new JavascriptRunnableService(service, pluginName, script, mode);
+		JavascriptStringRunnableService javascriptRunnableService = new JavascriptStringRunnableService(libdir, service, pluginName, script, mode);
 		return javascriptRunnableService;
 	}
 
@@ -60,7 +60,7 @@ public class JavascriptRunnableServiceHelper implements RunnableServiceHelper {
 	@Override
 	public void checkService(String serviceName, String script) throws ServiceException {
 		DuktapeJavascriptEngineWrapper wrapper = 
-				new DuktapeJavascriptEngineWrapper();
+				new DuktapeJavascriptEngineWrapper(libdir);
 		try {
 			boolean checked = wrapper.checkService(serviceName, script);
 			if (!checked) {

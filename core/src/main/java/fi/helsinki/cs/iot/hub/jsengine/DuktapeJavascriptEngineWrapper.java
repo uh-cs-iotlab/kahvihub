@@ -17,9 +17,13 @@
  */ 
 package fi.helsinki.cs.iot.hub.jsengine;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 
@@ -66,6 +70,7 @@ public class DuktapeJavascriptEngineWrapper {
 	private boolean needToStopAllEvents;
 	private HashMap<Integer, TcpSocket> sockets;
 	private JavascriptedIotHubCode javascriptedIotHubCode;
+	private final Path libdir;
 	private int lastSocketId;
 	private final int modes;
 
@@ -86,16 +91,17 @@ public class DuktapeJavascriptEngineWrapper {
 			+ "EventLoop.close=function(e){EventLoop.listenFd(e,0),delete this.socketListening[e],delete this.socketReading[e],delete this.socketConnecting[e],Socket.close(e)},"
 			+ "EventLoop.setReader=function(e,t){this.socketReading[e]=t,this.listenFd(e,Poll.POLLIN)},EventLoop.write=function(e,t){Socket.write(e,Duktape.Buffer(t))};";
 
-	public DuktapeJavascriptEngineWrapper() {
-		this(null, 0);
+	public DuktapeJavascriptEngineWrapper(Path libdir) {
+		this(libdir, null, 0);
 	}
 
-	public DuktapeJavascriptEngineWrapper(JavascriptedIotHubCode javascriptConfigurable, int modes) {
+	public DuktapeJavascriptEngineWrapper(Path libdir, JavascriptedIotHubCode javascriptConfigurable, int modes) {
 		this.javascriptedIotHubCode = javascriptConfigurable;
 		this.needToStopAllEvents = false;
 		this.sockets = new HashMap<>();
 		this.lastSocketId = 1000;
 		this.modes = modes;
+		this.libdir = libdir;
 	}
 
 	public boolean needToStopAllEvents() {
@@ -382,8 +388,22 @@ public class DuktapeJavascriptEngineWrapper {
 		return null;
 	}
 
-	public static String getEcmaEventLoopFilename() {
-		return DuktapeJavascriptEngineWrapper.class.getResource("/ecma_eventloop.js").getFile();
+	public String getEcmaEventLoopFilename() {
+		
+		File file = Paths.get(libdir.toString(), "ecma_eventloop.js").toFile();
+		if (!file.exists()) {
+			try {
+				InputStream link = (DuktapeJavascriptEngineWrapper.class.getResourceAsStream("/ecma_eventloop.js"));
+			    Files.copy(link, file.getAbsoluteFile().toPath());
+			    System.err.println(file.getAbsolutePath());
+			    return file.getAbsolutePath();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return null;
+			}
+		}
+		return file.getAbsolutePath();
 	}
 	
 	

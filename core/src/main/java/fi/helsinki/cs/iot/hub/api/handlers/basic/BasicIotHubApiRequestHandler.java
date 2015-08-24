@@ -71,6 +71,10 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 			//Then the services
 			this.subHandlers.put(Type.SERVICE, 
 					new ServiceRequestHandler());
+			
+			//Then the feeds
+			this.subHandlers.put(Type.FEED, 
+					new FeedRequestHandler(libdir));
 		}
 		else {
 			Log.w(TAG, "The libdir path is null, this is a bad idea");
@@ -79,10 +83,6 @@ public class BasicIotHubApiRequestHandler extends HttpRequestHandler {
 		//Then the enablers
 		this.subHandlers.put(Type.ENABLER, 
 				new EnablerRequestHandler());
-
-		//Then the feeds
-		this.subHandlers.put(Type.FEED, 
-				new FeedRequestHandler());
 
 		
 

@@ -27,6 +27,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -74,18 +76,29 @@ public class DuktapeJavascriptEngineWrapperTest {
 		jsScript += "if (xhr.readyState == 4 && xhr.status == 200) {";
 		jsScript += "res = xhr.responseText;}};";
 		jsScript += "xhr.send(null); res;";
+		
+		Path libdir = null;
+		try {
+			libdir = Files.createTempDirectory("testJsXmlHttpRequest");
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			fail(e1.getMessage());
+		}
+		libdir.toFile().deleteOnExit();
+		
 		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(jsScript);
 		SimpleHTTPServer ts = new SimpleHTTPServer();
 		try {
 			ts.start();
 			DuktapeJavascriptEngineWrapper wrapper = 
-					new DuktapeJavascriptEngineWrapper();
+					new DuktapeJavascriptEngineWrapper(libdir);
 			try {
 				assertNull(wrapper.runScript(simpleCode.getScript()));
 			} catch (JavascriptEngineException e) {
 				assertEquals("Script error: ReferenceError: identifier 'XMLHttpRequest' undefined", e.getMessage().trim());
 			}
-			wrapper =  new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.HTTP_REQUEST);
+			wrapper =  new DuktapeJavascriptEngineWrapper(libdir, simpleCode, DuktapeJavascriptEngineWrapper.HTTP_REQUEST);
 			String response = null;
 			try {
 				response = wrapper.runScript(simpleCode.getScript());
@@ -223,9 +236,20 @@ public class DuktapeJavascriptEngineWrapperTest {
 		jsScript += String.format("sc.connect('%s', %d);", "127.0.0.1", port);
 		jsScript += "sc.send('I want to send this message');";
 		jsScript += "sc.close();";
+		
+		Path libdir = null;
+		try {
+			libdir = Files.createTempDirectory("testTcpSocket");
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			fail(e1.getMessage());
+		}
+		libdir.toFile().deleteOnExit();
+		
 		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(jsScript);
 		DuktapeJavascriptEngineWrapper dtw = 
-				new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
+				new DuktapeJavascriptEngineWrapper(libdir, simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
 		try {
 			dtw.runScript(simpleCode.getScript());
 		} catch (JavascriptEngineException e) {
@@ -253,8 +277,19 @@ public class DuktapeJavascriptEngineWrapperTest {
 	public final void testNativeRunScript() {
 		String helloWorld = "Hello world!";
 		String script = "var echo = function(data) {return data}; echo(\"" + helloWorld + "\");";
+		
+		Path libdir = null;
+		try {
+			libdir = Files.createTempDirectory("testNativeRunScript");
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			fail(e1.getMessage());
+		}
+		libdir.toFile().deleteOnExit();
+		
 		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(script);
-		DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
+		DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(libdir, simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
 		try {
 			String res = wrapper.runScript(script);
 			assertEquals(helloWorld, res);
@@ -269,8 +304,19 @@ public class DuktapeJavascriptEngineWrapperTest {
 	public final void testNativeGetLibraryOutput() {
 		String libraryName = "Test";
 		String script = "var Test = { test: function() {return 'test';} }; ";
+		
+		Path libdir = null;
+		try {
+			libdir = Files.createTempDirectory("testNativeRunScript");
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			fail(e1.getMessage());
+		}
+		libdir.toFile().deleteOnExit();
+		
 		SimpleJavascriptedIotHubCode simpleCode = new SimpleJavascriptedIotHubCode(script);
-		DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
+		DuktapeJavascriptEngineWrapper wrapper = new DuktapeJavascriptEngineWrapper(libdir, simpleCode, DuktapeJavascriptEngineWrapper.TCP_SOCKET);
 		try {
 			assertEquals("test", wrapper.getLibraryOutput(libraryName, script, "Test.test();"));
 		} catch (JavascriptEngineException e) {
