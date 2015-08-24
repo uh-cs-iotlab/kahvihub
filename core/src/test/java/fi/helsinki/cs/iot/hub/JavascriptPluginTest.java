@@ -54,7 +54,6 @@ import fi.helsinki.cs.iot.hub.model.enabler.PluginInfo;
 import fi.helsinki.cs.iot.hub.model.enabler.PluginManager;
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
-import fi.helsinki.cs.iot.hub.jsengine.TcpSocket;
 import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo.Type;
 
 public class JavascriptPluginTest {
@@ -831,45 +830,6 @@ public class JavascriptPluginTest {
 			}
 			simpleHelvarnetRouter.stop();
 		} catch (JSONException | PluginException | IOException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-	}
-	
-	@Test
-	public final void testPostValueRealRouter() {
-		int port = 50000;
-		String address = "10.254.1.1";
-		
-		boolean isHostAvailable = false;
-		try {
-			isHostAvailable = TcpSocket.checkHostAvailability(address, port);
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		org.junit.Assume.assumeTrue(isHostAvailable);
-		System.err.println("Doing the real router test");
-		String enablerName = "HelvarnetEnabler";
-		try {
-			Plugin helvarnetPlugin = getHelvarnetPlugin(enablerName);
-			assertNotNull(helvarnetPlugin);
-			JSONObject config = new JSONObject();
-			config.put("address", address);
-			config.put("port", port);
-			assertTrue(helvarnetPlugin.configure(config.toString()));
-			int nbFeatures = helvarnetPlugin.getNumberOfFeatures();
-			assertEquals(2, nbFeatures);
-			List<FeatureDescription> features = new ArrayList<>();
-			for (int i = 0; i < nbFeatures; i++) {
-				features.add(helvarnetPlugin.getFeatureDescription(i));
-			}
-			String goodData = "{\"light\": {\"luminosity\": 1, \"fade\": 100}}";
-			JSONObject jobj = new JSONObject(goodData);
-			for (FeatureDescription fd : features) {
-				assertTrue(fd.toString(), helvarnetPlugin.postValue(fd, jobj.toString()));
-			}
-		} catch (JSONException | PluginException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
