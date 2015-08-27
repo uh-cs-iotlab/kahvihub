@@ -96,8 +96,6 @@ public class HelvarBoxTest {
 			e1.printStackTrace();
 		}
 		org.junit.Assume.assumeTrue(isHostAvailable);
-		//TODO I am skipping it at the moment
-		org.junit.Assume.assumeTrue(false);
 
 		try {
 			//Now we need to install the helvarNet plugin
@@ -124,9 +122,8 @@ public class HelvarBoxTest {
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubport + "/enablers/", enablerHelvar.toString());
 			System.out.println(res);
 			JSONObject resultPostHelvarEnabler = new JSONObject(res);
-			assertEquals(3, resultPostHelvarEnabler.getInt("id"));
+			assertEquals(1, resultPostHelvarEnabler.getInt("id"));
 			assertEquals("helvar", resultPostHelvarEnabler.getString("name"));
-			System.out.println(resultPostHelvarEnabler.getJSONArray("features").length());
 			org.junit.Assume.assumeTrue("The helvarbox is probably not the one I used for demo, sorry",
 					2 == resultPostHelvarEnabler.getJSONArray("features").length());
 

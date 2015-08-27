@@ -2,6 +2,7 @@ var HelvarnetPlugin = {
 	
 	needConfiguration: true,
 	config: null,
+	socket: null,
 	
 	checkConfiguration: function(data) { 
 		var config = JSON.parse(data);
@@ -18,27 +19,47 @@ var HelvarnetPlugin = {
 	},
 	
 	getFeatureType: function (feature, address, port) {
-		var r_ftype = TCPSocket();
+		print('getFeatureType: ' + feature + ', address: ' + address + ', port: ' + port);
+		if (!this.socket) {
+			this.socket = TCPSocket();
+			this.socket.connect(address, port);
+		}
+		else if (this.socket.status === this.socket.DISCONNECTED) {
+			this.socket.connect(address, port);
+		}
 		var t;
 		var getAnswers = HelvarnetPlugin.getAnswers;
-		r_ftype.connect(address, port);
-		r_ftype.onreceive = function (msg) {
+		this.socket.onreceive = function (msg) {
 			var types = getAnswers(msg);
 			if (types.length == 1) {t = types[0];};
 		};
-		r_ftype.send(">V:2,C:104," + feature + "#");
-		r_ftype.close();
+		this.socket.send(">V:2,C:104," + feature + "#");
 		return t;
 	},
 	
 	getFeaturesFromGroup: function (groupId, address, port) {
-		var r_group = TCPSocket();
+		print('getFeaturesFromGroup: ' + groupId + ', port: ' + port + ', address: ' + address);
+		if (!this.socket) {
+			this.socket = TCPSocket();
+			this.socket.connect(address, port);
+		}
+		else if (this.socket.status === this.socket.DISCONNECTED) {
+			this.socket.connect(address, port);
+		}
+		else {
+			print('The socket looks fine');
+		}
 		var features = [];
-		r_group.connect(address, port);
 		var getAnswers = HelvarnetPlugin.getAnswers;
 		var getFeatureType = HelvarnetPlugin.getFeatureType;
-		r_group.onreceive = function (msg) { 
-			var feat_in_group = getAnswers(msg);
+		var feat_in_group;
+		this.socket.onreceive = function (msg) { 
+			feat_in_group = getAnswers(msg);
+		};
+		var command = ">V:2,C:164,G:" + groupId + "#";
+		print(command);
+		this.socket.send(command);
+		if (feat_in_group) {
 			var index;
 			for(index = 0; index < feat_in_group.length; ++index) {
 				var t = getFeatureType(feat_in_group[index], address, port);
@@ -53,31 +74,36 @@ var HelvarnetPlugin = {
 					features[features.length] = {name: n, type: ft};
 				}
 			}
-		};
-		var command = ">V:2,C:164,G:" + groupId + "#";
-		r_group.send(command);
-		r_group.close();
+		}
 		return features;
 	},
 	
 	initialiseFeatures: function (address, port) {
+		print('initialiseFeatures');
 		var features = {};
-		var r_groups = TCPSocket();
-		r_groups.connect(address, port);
+		if (!this.socket) {
+			this.socket = TCPSocket();
+			this.socket.connect(address, port);
+		}
+		else if (this.socket.status === this.socket.DISCONNECTED) {
+			this.socket.connect(address, port);
+		}
 		var getAnswers = HelvarnetPlugin.getAnswers;
 		var getFeaturesFromGroup = HelvarnetPlugin.getFeaturesFromGroup;
-		r_groups.onreceive = function (msg) {
-			var groups = getAnswers(msg);
+		var groups;
+		this.socket.onreceive = function (msg) {
+			groups = getAnswers(msg);
+		};
+		this.socket.send(">V:2,C:165#");
+		if (groups) {
 			var index; 
 			for(index = 0; index < groups.length; ++index) {
-				var feats_in_group = getFeaturesFromGroup(groups[index], r_groups.settings.address, r_groups.settings.port);
+				var feats_in_group = getFeaturesFromGroup(groups[index], address, port);
 				for (var i = 0; i < feats_in_group.length; i++) {
 					features[feats_in_group[i].name] = feats_in_group[i].type;
 				}
 			}
-		};
-		r_groups.send(">V:2,C:165#");
-		r_groups.close();
+		}
 		return features;
 	},
 	
@@ -115,7 +141,7 @@ var HelvarnetPlugin = {
 		} else { return 0; }
 	},
 	
-	getFeatureValue: function(name) { print('BBB'); return null; },
+	getFeatureValue: function(name) { return null; },
 	
 	getFeatureDescription: function(index) {
 		if (this.config.features) { 
@@ -132,12 +158,17 @@ var HelvarnetPlugin = {
 			var jdata = JSON.parse(data);
 			if (this.checkDataType(jdata, fd)) {
 				var result = true;
-				var r_post = TCPSocket();
-				r_post.connect(this.config.address, this.config.port);
-				r_post.onreceive = function (msg) {};
+				if (!this.socket) {
+					this.socket = TCPSocket();
+					this.socket.connect(address, port);
+				}
+				else if (this.socket.status === this.socket.DISCONNECTED) {
+					this.socket.connect(address, port);
+				}
+				this.socket.onreceive = function (msg) {};
 				var command = '>V:2,C:14,L:' + jdata.light.luminosity + ',F:' + jdata.light.fade + ',' + name + '#';
-				r_post.send(command);
-				r_post.close();
+				this.socket.send(command);
+				this.socket.close();
 				return result;
 			}
 			return false;

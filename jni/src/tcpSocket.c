@@ -12,6 +12,11 @@ duk_ret_t tcp_socket_onreceive(duk_context *ctx) {
 duk_ret_t tcp_socket_onerror(duk_context *ctx) {
 	//Dummy onerror(code, msg)
 	duk_pop_2(ctx);
+	//Ideally, I would like to close the socket
+	duk_push_this(ctx);
+	duk_push_string(ctx, "close");
+	duk_call_prop(ctx, -2, 0);
+	duk_pop(ctx);
 	return 1;
 }
 
