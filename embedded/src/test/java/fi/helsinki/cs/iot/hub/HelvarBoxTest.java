@@ -7,8 +7,14 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Date;
+
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.After;
@@ -81,6 +87,99 @@ public class HelvarBoxTest {
 			return null;
 		}
 	}
+	
+	private String dropExtraCommand(String message) {
+		int count = message.length() - message.replace("#", "").length();
+		if (count > 1) {
+			int currentIndex = 0;
+			for (int i = 0; i < count; i++) {
+				int nextIndex = message.indexOf("#", currentIndex);
+				String substr = message.substring(currentIndex, nextIndex + 1);
+				if (substr.startsWith("?")) {
+					System.err.println("I had to drop some messages for " + message + ", and I only kept: " + substr);
+					message = substr;
+					break;
+				}
+				currentIndex = nextIndex + 1;
+			}
+		}
+		return message;
+	}
+	
+	private String makeQuery(OutputStreamWriter writer, InputStreamReader reader, String query) throws IOException {
+		if (writer == null || reader == null) {
+			System.err.println("Cannot perform the operation");
+			return null;
+		}
+
+		writer.write(query);
+		writer.flush();
+
+		char[] cbuf = new char[1024];
+		if(reader.read(cbuf) >= 0) {
+			return dropExtraCommand(new String(cbuf).trim());
+		}
+		return null;
+	}
+	
+	@Test
+	public void testNative() {
+		int port = 50000;
+		String address = "10.254.1.1";
+		
+		//Toggle that if you need to check if it works natively
+		org.junit.Assume.assumeTrue(false);
+		
+		boolean isHostAvailable = false;
+		try {
+			isHostAvailable = TcpSocket.checkHostAvailability(address, port);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		org.junit.Assume.assumeTrue(isHostAvailable);
+
+		try {
+			Date startTime = new Date();
+			Socket socket = new Socket(address, port);
+			
+			OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream());
+			InputStreamReader reader = new InputStreamReader(socket.getInputStream());
+			
+			//First we get the list of groups
+			String response = makeQuery(writer, reader, ">V:2,C:165#");
+			Date interTime = new Date();
+			System.out.println(String.format("It took %.3f seconds to get the groups %s", 
+					(interTime.getTime() - startTime.getTime()) / 1000.0, response));
+			String[] groups = response.substring(response.indexOf("=") + 1, response.indexOf("#")).split(",");
+			for (String group : groups) {
+				response = makeQuery(writer, reader, ">V:2,C:164,G:" + group + "#");
+				Date newTime = new Date();
+				System.out.println(String.format("It took %.3f seconds to get the features %s", 
+						(newTime.getTime() - interTime.getTime()) / 1000.0, response));
+				interTime = newTime;
+				String[] features = response.substring(response.indexOf('=') + 1, response.indexOf('#')).split(",");
+				for (String feature : features) {
+					response = makeQuery(writer, reader, ">V:2,C:104," + feature + "#");
+					newTime = new Date();
+					System.out.println(String.format("It took %.3f seconds to get the feature type %s", 
+							(newTime.getTime() - interTime.getTime()) / 1000.0, response));
+					interTime = newTime;
+				}
+			}
+			socket.shutdownInput();
+			socket.shutdownOutput();
+			socket.close();
+			System.out.println(String.format("It took %.3f seconds to do the initialisation", 
+					(interTime.getTime() - startTime.getTime()) / 1000.0));
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+
+	}
 
 
 	@Test
@@ -120,7 +219,6 @@ public class HelvarBoxTest {
 			enablerHelvar.put("configuration", config);
 
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubport + "/enablers/", enablerHelvar.toString());
-			System.out.println(res);
 			JSONObject resultPostHelvarEnabler = new JSONObject(res);
 			assertEquals(1, resultPostHelvarEnabler.getInt("id"));
 			assertEquals("helvar", resultPostHelvarEnabler.getString("name"));
@@ -134,8 +232,21 @@ public class HelvarBoxTest {
 			JSONObject expectedFeature = new JSONObject(res);
 			assertTrue(expectedFeature.getBoolean("isAtomicFeed"));
 			
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + iothubport + "/feeds/", null);
+			JSONArray feeds = new JSONArray(res);
+			assertEquals(1, feeds.length());
+			JSONObject feed = feeds.getJSONObject(0);
+			assertFalse(feed.getBoolean("readable"));
+			assertTrue(feed.getBoolean("writable"));
+			String feedName = feed.getString("name");
 			
-			
+			//Now I want to change the lights
+			JSONObject lightdata = new JSONObject("{\"light\": {\"luminosity\": 50, \"fade\": 200}}");
+			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubport + "/feeds/" + feedName, lightdata.toString());
+			System.out.println(res);
+
+
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			fail(e.getMessage());

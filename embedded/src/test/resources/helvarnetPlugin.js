@@ -2,7 +2,6 @@ var HelvarnetPlugin = {
 	
 	needConfiguration: true,
 	config: null,
-	socket: null,
 	
 	checkConfiguration: function(data) { 
 		var config = JSON.parse(data);
@@ -18,92 +17,67 @@ var HelvarnetPlugin = {
 		return sub.split(",");
 	},
 	
-	getFeatureType: function (feature, address, port) {
-		print('getFeatureType: ' + feature + ', address: ' + address + ', port: ' + port);
-		if (!this.socket) {
-			this.socket = TCPSocket();
-			this.socket.connect(address, port);
-		}
-		else if (this.socket.status === this.socket.DISCONNECTED) {
-			this.socket.connect(address, port);
-		}
+	getFeatureType: function (socket, feature, address, port) {
 		var t;
 		var getAnswers = HelvarnetPlugin.getAnswers;
-		this.socket.onreceive = function (msg) {
+		socket.onreceive = function (msg) {
 			var types = getAnswers(msg);
 			if (types.length == 1) {t = types[0];};
 		};
-		this.socket.send(">V:2,C:104," + feature + "#");
+		var command = ">V:2,C:104," + feature + "#";
+		socket.send(command);
 		return t;
 	},
 	
-	getFeaturesFromGroup: function (groupId, address, port) {
-		print('getFeaturesFromGroup: ' + groupId + ', port: ' + port + ', address: ' + address);
-		if (!this.socket) {
-			this.socket = TCPSocket();
-			this.socket.connect(address, port);
-		}
-		else if (this.socket.status === this.socket.DISCONNECTED) {
-			this.socket.connect(address, port);
-		}
-		else {
-			print('The socket looks fine');
-		}
+	getFeaturesFromGroup: function (socket, groupId, address, port) {
 		var features = [];
 		var getAnswers = HelvarnetPlugin.getAnswers;
 		var getFeatureType = HelvarnetPlugin.getFeatureType;
 		var feat_in_group;
-		this.socket.onreceive = function (msg) { 
+		socket.onreceive = function (msg) { 
 			feat_in_group = getAnswers(msg);
-		};
-		var command = ">V:2,C:164,G:" + groupId + "#";
-		print(command);
-		this.socket.send(command);
-		if (feat_in_group) {
-			var index;
-			for(index = 0; index < feat_in_group.length; ++index) {
-				var t = getFeatureType(feat_in_group[index], address, port);
-				if (t == "1537") {
-					var ft = {
-						light: {
-							luminosity: "number",
-							fade: "number"
-						}
-					};
-					var n = feat_in_group[index];
-					features[features.length] = {name: n, type: ft};
+			if (feat_in_group) {
+				var index;
+				for(index = 0; index < feat_in_group.length; ++index) {
+					var t = getFeatureType(socket, feat_in_group[index], address, port);
+					if (t == "1537") {
+						var ft = {
+							light: {
+								luminosity: "number",
+								fade: "number"
+							}
+						};
+						var n = feat_in_group[index];
+						features[features.length] = {name: n, type: ft};
+					}
 				}
 			}
-		}
+		};
+		var command = ">V:2,C:164,G:" + groupId + "#";
+		socket.send(command);
 		return features;
 	},
 	
 	initialiseFeatures: function (address, port) {
-		print('initialiseFeatures');
 		var features = {};
-		if (!this.socket) {
-			this.socket = TCPSocket();
-			this.socket.connect(address, port);
-		}
-		else if (this.socket.status === this.socket.DISCONNECTED) {
-			this.socket.connect(address, port);
-		}
+		var socket = TCPSocket();
+		socket.connect(address, port);
+		
 		var getAnswers = HelvarnetPlugin.getAnswers;
 		var getFeaturesFromGroup = HelvarnetPlugin.getFeaturesFromGroup;
 		var groups;
-		this.socket.onreceive = function (msg) {
+		socket.onreceive = function (msg) {
 			groups = getAnswers(msg);
-		};
-		this.socket.send(">V:2,C:165#");
-		if (groups) {
 			var index; 
 			for(index = 0; index < groups.length; ++index) {
-				var feats_in_group = getFeaturesFromGroup(groups[index], address, port);
+				var feats_in_group = getFeaturesFromGroup(socket, groups[index], address, port);
 				for (var i = 0; i < feats_in_group.length; i++) {
 					features[feats_in_group[i].name] = feats_in_group[i].type;
 				}
 			}
-		}
+		};
+		socket.send(">V:2,C:165#");
+		socket.close();
 		return features;
 	},
 	
@@ -158,21 +132,16 @@ var HelvarnetPlugin = {
 			var jdata = JSON.parse(data);
 			if (this.checkDataType(jdata, fd)) {
 				var result = true;
-				if (!this.socket) {
-					this.socket = TCPSocket();
-					this.socket.connect(address, port);
-				}
-				else if (this.socket.status === this.socket.DISCONNECTED) {
-					this.socket.connect(address, port);
-				}
-				this.socket.onreceive = function (msg) {};
+				var socket = TCPSocket();
+				socket.connect(this.config.address, this.config.port);
+				socket.onreceive = function (msg) {};
 				var command = '>V:2,C:14,L:' + jdata.light.luminosity + ',F:' + jdata.light.fade + ',' + name + '#';
-				this.socket.send(command);
-				this.socket.close();
+				socket.send(command);
+				socket.close();
 				return result;
 			}
 			return false;
-		} catch (e) { return false; }
+		} catch (e) { print(e); return false; }
 	}
 
 };

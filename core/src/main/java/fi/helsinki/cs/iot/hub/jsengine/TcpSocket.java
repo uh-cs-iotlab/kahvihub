@@ -17,10 +17,9 @@
  */ 
 package fi.helsinki.cs.iot.hub.jsengine;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
@@ -32,10 +31,14 @@ import java.net.Socket;
 public class TcpSocket extends Socket {
 
 	private final int id;
+	private OutputStreamWriter writer;
+	private InputStreamReader reader;
 
 	public static boolean checkHostAvailability(String host, int port) throws IOException {
-		Socket s = new Socket();
-		s.connect(new InetSocketAddress(host,port),500);
+		Socket s = new Socket(host, port);
+		if (!s.isConnected()) {
+			s.connect(new InetSocketAddress(host,port),500);
+		}
 		s.close();
 		return true;
 	}
@@ -43,19 +46,49 @@ public class TcpSocket extends Socket {
 	public TcpSocket(int id, String host, int port) throws IOException {
 		super(host, port);
 		this.id = id;
+		writer = new OutputStreamWriter(getOutputStream());
+		reader = new InputStreamReader(getInputStream());
+	}
+	
+	private String dropExtraCommand(String message) {
+		int count = message.length() - message.replace("#", "").length();
+		if (count > 1) {
+			int currentIndex = 0;
+			for (int i = 0; i < count; i++) {
+				int nextIndex = message.indexOf("#", currentIndex);
+				String substr = message.substring(currentIndex, nextIndex + 1);
+				if (substr.startsWith("?")) {
+					System.err.println("I had to drop some messages for " + message + ", and I only kept: " + substr);
+					message = substr;
+					break;
+				}
+				currentIndex = nextIndex + 1;
+			}
+		}
+		return message;
+	}
+	
+	private String makeQuery(OutputStreamWriter writer, InputStreamReader reader, String query) throws IOException {
+		if (writer == null || reader == null) {
+			System.err.println("Cannot perform the operation");
+			return null;
+		}
+
+		writer.write(query);
+		writer.flush();
+
+		char[] cbuf = new char[1024];
+		if(reader.read(cbuf) >= 0) {
+			return dropExtraCommand(new String(cbuf).trim());
+		}
+		return null;
 	}
 
 	public String send(String message) throws IOException {
-		PrintWriter out = new PrintWriter(getOutputStream(), true);
-		BufferedReader in = new BufferedReader(
-				new InputStreamReader(getInputStream()));
 		if (message != null) {
-			out.println(message);
-			String response = in.readLine();
+			String response = makeQuery(writer, reader, message);
 			return response;
 		}
-		out.close();
-		in.close();
 		return null;
 	}
 
