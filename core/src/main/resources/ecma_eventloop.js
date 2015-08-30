@@ -144,7 +144,7 @@ EventLoop.processTimers = function() {
         // a callback to do cleanups and request exit, and can be sure that
         // no more callbacks are processed.
 
-        if (this.exitRequested) {
+        if (this.exitRequested || checkNativeExitRequested()) {
             //print('exit requested, exit');
             break;
         }

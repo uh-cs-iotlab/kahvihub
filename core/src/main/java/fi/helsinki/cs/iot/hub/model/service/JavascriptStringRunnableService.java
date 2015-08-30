@@ -31,7 +31,7 @@ import fi.helsinki.cs.iot.hub.utils.Log;
  */
 public class JavascriptStringRunnableService implements RunnableService {
 
-	private static final String TAG = "JavascriptRunnableService";
+	private static final String TAG = "JavascriptStringRunnableService";
 	
 	private Thread thread;
 	private final String jname;
@@ -145,6 +145,7 @@ public class JavascriptStringRunnableService implements RunnableService {
 			Log.d(TAG, "The thread is already started");
 			return;
 		}
+		wrapper.stopAllEvents(false);
 		thread = new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -164,10 +165,7 @@ public class JavascriptStringRunnableService implements RunnableService {
 		if (isStarted()) {
 			cancelAllEvents();
 		}
-		else {
-			Log.e(TAG, "The thread is not running");
-		}
-
+		thread = null;
 	}
 
 	@Override

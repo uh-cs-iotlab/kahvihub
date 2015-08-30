@@ -37,8 +37,6 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 
-import fi.helsinki.cs.iot.hub.utils.Log;
-
 /**
  * A simple, tiny, nicely embeddable HTTP server in Java
  * <p/>
@@ -1002,7 +1000,6 @@ public abstract class NanoHTTPD {
                 if (Method.POST.equals(method)) {
                     String contentType = "";
                     String contentTypeHeader = headers.get("content-type");
-                    Log.d("NanoHTTPD", "I get in there");
 
                     StringTokenizer st = null;
                     if (contentTypeHeader != null) {

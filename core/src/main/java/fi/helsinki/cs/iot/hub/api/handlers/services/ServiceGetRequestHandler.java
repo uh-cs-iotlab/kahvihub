@@ -26,9 +26,7 @@ import org.json.JSONException;
 import fi.helsinki.cs.iot.hub.api.handlers.basic.IotHubApiRequestHandler;
 import fi.helsinki.cs.iot.hub.api.request.IotHubRequest;
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
-import fi.helsinki.cs.iot.hub.model.service.RunnableService;
 import fi.helsinki.cs.iot.hub.model.service.Service;
-import fi.helsinki.cs.iot.hub.model.service.ServiceException;
 import fi.helsinki.cs.iot.hub.model.service.ServiceManager;
 import fi.helsinki.cs.iot.hub.utils.Log;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD.Method;
@@ -91,31 +89,18 @@ public class ServiceGetRequestHandler extends IotHubApiRequestHandler {
 				return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "Could not get the service with name " + serviceName);
 			}
 			else {
-				RunnableService runnableService = ServiceManager.getInstance().getConfiguredRunnableService(service);
-				if (doStart) {
-					if (runnableService.isStarted()) {
+				if (!ServiceManager.getInstance().startStopRunnableService(service, doStart)) {
+					if (doStart) {
 						Log.w(TAG, "No need to start the service, it has been already started");
 					}
 					else {
-						runnableService.start();
-					}
-				}
-				else {
-					if (!runnableService.isStarted()) {
 						Log.w(TAG, "No need to stop the service, it is already stopped");
-					}
-					else {
-						runnableService.stop();
 					}
 				}
 				return getResponseOk(service.toJSON().toString());
 			}
 		} catch (JSONException e) {
 			return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "The method get is not available without the service name");
-		} catch (ServiceException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return getResponseKo(STATUS_METHOD_NOT_SUPPORTED, "Problem with the plugin");
 		}
 	}
 	

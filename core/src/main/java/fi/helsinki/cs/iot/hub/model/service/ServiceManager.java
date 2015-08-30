@@ -90,6 +90,25 @@ public class ServiceManager {
 		services.put(newService.getName(), runnableService);
 		return runnableService;
 	}
+	
+	public boolean startStopRunnableService(Service service, boolean doStart) {
+		RunnableService runnableService = services.get(service.getName());
+		if (runnableService == null) {
+			Log.e(TAG, "Trying to update a service that does not exist");
+			return false;
+		}
+		if (doStart && !runnableService.isStarted()) {
+			runnableService.start();
+			services.put(service.getName(), runnableService);
+			return true;
+		}
+		else if (!doStart && runnableService.isStarted()) {
+			runnableService.stop();
+			services.put(service.getName(), runnableService);
+			return true;
+		}
+		return false;
+	}
 
 	public RunnableService getConfiguredRunnableService(Service service) throws ServiceException {
 		RunnableService runnableService = getRunnableService(service);

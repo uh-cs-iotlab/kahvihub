@@ -35,8 +35,8 @@ var GCalPlugin = {
 		xhr.open('GET', url, true);
 		xhr.onreadystatechange = function (event) { if (xhr.status == 200) { res = xhr.responseText; }};
 		xhr.send(null);
-		var processResults = function (results) {
-			var jres = JSON.parse(results);
+		var processResults = function (res) {
+			var jres = JSON.parse(res);
 			var array = [];
 			if (typeof(jres.items) !== 'undefined') {
 				var index;

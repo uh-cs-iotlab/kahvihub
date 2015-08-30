@@ -68,7 +68,7 @@ public class TcpSocket extends Socket {
 		return message;
 	}
 	
-	private String makeQuery(OutputStreamWriter writer, InputStreamReader reader, String query) throws IOException {
+	private String makeQuery(OutputStreamWriter writer, InputStreamReader reader, String query, boolean waitForAnswer) throws IOException {
 		if (writer == null || reader == null) {
 			System.err.println("Cannot perform the operation");
 			return null;
@@ -77,6 +77,9 @@ public class TcpSocket extends Socket {
 		writer.write(query);
 		writer.flush();
 
+		if (!waitForAnswer) {
+			return "";
+		}
 		char[] cbuf = new char[1024];
 		if(reader.read(cbuf) >= 0) {
 			return dropExtraCommand(new String(cbuf).trim());
@@ -84,9 +87,9 @@ public class TcpSocket extends Socket {
 		return null;
 	}
 
-	public String send(String message) throws IOException {
+	public String send(String message, boolean waitForAnswer) throws IOException {
 		if (message != null) {
-			String response = makeQuery(writer, reader, message);
+			String response = makeQuery(writer, reader, message, waitForAnswer);
 			return response;
 		}
 		return null;

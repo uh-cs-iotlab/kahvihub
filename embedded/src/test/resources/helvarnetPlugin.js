@@ -134,7 +134,7 @@ var HelvarnetPlugin = {
 				var result = true;
 				var socket = TCPSocket();
 				socket.connect(this.config.address, this.config.port);
-				socket.onreceive = function (msg) {};
+				socket.onreceive = null;
 				var command = '>V:2,C:14,L:' + jdata.light.luminosity + ',F:' + jdata.light.fade + ',' + name + '#';
 				socket.send(command);
 				socket.close();

@@ -432,11 +432,11 @@ public class DuktapeJavascriptEngineWrapper {
 		}
 	}
 
-	public String tcpSocketSend(int socketId, String message) throws IOException, JavascriptEngineException {
+	public String tcpSocketSend(int socketId, String message, boolean waitForAnswer) throws IOException, JavascriptEngineException {
 		try {
 			TcpSocket socket = sockets.get(socketId);
 			if (socket != null) {
-				return socket.send(message);
+				return socket.send(message, waitForAnswer);
 			}
 			throw new JavascriptEngineException(TAG, "No tcp socket has been found for id " + socketId);
 		} catch (Exception e) {

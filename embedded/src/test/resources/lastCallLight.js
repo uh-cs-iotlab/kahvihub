@@ -27,7 +27,7 @@ var LastCallLight = {
 		return true; 
 	},
 	
-	configure: function(config) { 
+	configure: function(config) {
 		if (this.checkConfiguration(config)) {
 			this.config = JSON.parse(config);
 		}
@@ -44,7 +44,7 @@ var LastCallLight = {
 			var url = server + '/feeds/' + lights[index];
 			xhr.open('POST', url, true);
 			xhr.onreadystatechange = function (event) {};
-			var light = {light: { luminosity: lum, fade: 200}};
+			var light = {light: { luminosity: lum, fade: 100}};
 			xhr.send(JSON.stringify(light));
 		}
 	},
@@ -53,8 +53,8 @@ var LastCallLight = {
 		var index;
 		for (index = 0; index < periods.length; ++index) {
 			var now = new Date();
-			var start = this.rfc3339ToData(periods[index].period.start.date.time);
-			var end = this.rfc3339ToData(periods[index].period.end.date.time);
+			var start = LastCallLight.rfc3339ToData(periods[index].period.start.date.time);
+			var end = LastCallLight.rfc3339ToData(periods[index].period.end.date.time);
 			if (start < now && end > now) {
 				return true;
 			}	
@@ -62,22 +62,21 @@ var LastCallLight = {
 		return false;
 	},
 	
-	checkRooms: function () {
-		if (!this.config) return;
-		var rooms = this.config.rooms;
+	checkRooms: function (rooms, server, interval) {
+		if (!rooms) return;
 		var index = 0;
 		for (index = 0; index < rooms.length; ++index) {
 			var calendar = rooms[index].calendar;
 			var xhr = XMLHttpRequest();
 			var res;
-			var url = this.config.server + '/feeds/' + calendar;
+			var url = server + '/feeds/' + calendar;
 			xhr.open('GET', url, true);
 			xhr.onreadystatechange = function (event) { if (xhr.status == 200) { res = JSON.parse(xhr.responseText); }};
 			xhr.send(null);
 			if (res) {
-				if (this.needToDim(res)) {
-					setTimeout(this.dimTheLights, 0, this.config.server, rooms[index].lights, 10);
-					setTimeout(this.dimTheLights, 200, this.config.server, rooms[index].lights, 100);
+				if (LastCallLight.needToDim(res)) {
+					setTimeout(LastCallLight.dimTheLights, 0, server, rooms[index].lights, 0);
+					setTimeout(LastCallLight.dimTheLights, interval, server, rooms[index].lights, 100);
 				}
 			}
 		}
@@ -85,10 +84,10 @@ var LastCallLight = {
 	
 	run: function () {
 		if (this.config.oneshot) {
-			this.checkRooms();
+			this.checkRooms(this.config.rooms, this.config.server, this.config.interval);
 		}
 		else {
-			setInterval(this.checkRooms, this.config.interval);
+			setInterval(this.checkRooms, this.config.interval, this.config.rooms, this.config.server, this.config.interval / 2);
 		}
 	}
 	

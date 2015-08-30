@@ -25,6 +25,7 @@ import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptEngineException;
 import fi.helsinki.cs.iot.hub.jsengine.JavascriptedIotHubCode;
 import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
+import fi.helsinki.cs.iot.hub.utils.Log;
 
 /**
  * 
@@ -33,6 +34,7 @@ import fi.helsinki.cs.iot.hub.model.feed.FeatureDescription;
  */
 public class JavascriptStringPlugin implements Plugin, JavascriptedIotHubCode {
 
+	private static final String TAG = "JavascriptStringPlugin";
 	private Thread thread;
 	private boolean needToStop;
 	private final String jname;
@@ -98,6 +100,7 @@ public class JavascriptStringPlugin implements Plugin, JavascriptedIotHubCode {
 		close();
 		try {
 			boolean res = wrapper.pluginCheckConfiguration(jname, jscript, pluginConfig);
+			Log.d(TAG, String.format("The plugin %s the configuration check", res ? "passed" : "did not pass"));
 			if (res) {
 				return configurePersistant(pluginConfig);
 			}

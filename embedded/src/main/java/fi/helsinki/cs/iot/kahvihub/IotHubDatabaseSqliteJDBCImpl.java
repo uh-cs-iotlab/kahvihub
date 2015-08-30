@@ -1098,16 +1098,16 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		}
 		return pluginInfo;
 	}
-	
+
 
 	@Override
 	public PluginInfo deletePlugin(long id) {
 		PluginInfo pluginInfo = null;
-		
+
 		try {
 			checkOpenness();
 			connection.setAutoCommit(false);
-			
+
 			pluginInfo = getPluginInfo(id);
 			if (pluginInfo == null) {
 				Log.e(TAG, "No plugin was found to delete with id " + id);
@@ -1130,7 +1130,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 			e.printStackTrace();
 			pluginInfo = null;
 		}
-		
+
 		try {
 			if (pluginInfo == null) {
 				connection.rollback();
@@ -1299,7 +1299,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					" WHERE " + IotHubDataHandler.KEY_ENABLER_ID + "=?";
 			PreparedStatement ps = connection.prepareStatement(query);
 			ps.setLong(1, enabler.getId());
-			if (!ps.execute()) {
+			if (ps.executeUpdate() != 1) {
 				enabler = null;
 			}
 			ps.close();
@@ -1340,7 +1340,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		}
 		return enabler;
 	}
-	
+
 	@Override
 	public Enabler getEnabler(String name) {
 		Enabler enabler = null;
@@ -1357,10 +1357,16 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				String metadata = rs.getString(IotHubDataHandler.KEY_ENABLER_METADATA);
 				long pluginId = rs.getLong(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO);
 				String pluginConfiguration = rs.getString(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG);
-				enabler = new Enabler(id, name, metadata, getPluginInfo(pluginId), pluginConfiguration);
-				List<Feature> features = getFeaturesForEnabler(enabler);
-				for (Feature feature : features) {
-					enabler.addFeature(feature);
+				PluginInfo pluginInfo = getPluginInfo(pluginId);
+				if (pluginInfo == null) {
+					Log.e(TAG, "The plugin info should not be null when getting an enabler");
+				}
+				else {
+					enabler = new Enabler(id, name, metadata, pluginInfo, pluginConfiguration);
+					List<Feature> features = getFeaturesForEnabler(enabler);
+					for (Feature feature : features) {
+						enabler.addFeature(feature);
+					}
 				}
 			}
 			rs.close();
@@ -1560,8 +1566,8 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		}
 		return null;
 	}
-	
-	
+
+
 
 	/* Services functions */
 
@@ -1574,11 +1580,11 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 		try {
 			checkOpenness();
 			String sql = "delete from " + IotHubDataHandler.TABLE_FEATURE +
-		
+
 					" where " + IotHubDataHandler.KEY_FEATURE_ENABLER_ID + "=?";
 			PreparedStatement ps = connection.prepareStatement(sql);
 			ps.setLong(1, enabler.getId());
-			
+
 			if (ps.executeUpdate() == features.size()) {
 				return features;
 			}
@@ -1706,7 +1712,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 					" WHERE " + IotHubDataHandler.KEY_SERVICE_ID + "=?";
 			PreparedStatement ps = connection.prepareStatement(query);
 			ps.setLong(1, service.getId());
-			if (ps.execute()) {
+			if (ps.executeUpdate() != 1) {
 				Log.i(TAG, "Service " + service.getId() + " delete from db");
 			}
 			else {
@@ -1723,31 +1729,46 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 
 	@Override
 	public ServiceInfo deleteServiceInfo(long id) {
-		ServiceInfo service = getServiceInfo(id);
-		if (service == null) {
-			Log.w(TAG, "Cannot delete service info " + id);
-			return null;
-		}
+		ServiceInfo serviceInfo = null;
+
 		try {
 			checkOpenness();
-			final String query = "DELETE FROM " +
-					IotHubDataHandler.TABLE_SERVICE_INFO +
-					" WHERE " + IotHubDataHandler.KEY_SERVICE_INFO_ID + "=?";
-			PreparedStatement ps = connection.prepareStatement(query);
+			connection.setAutoCommit(false);
+
+			serviceInfo = getServiceInfo(id);
+			if (serviceInfo == null) {
+				Log.e(TAG, "No service plugin was found to delete with id " + id);
+				return null;
+			}
+			String sql = "DELETE FROM " + IotHubDataHandler.TABLE_SERVICE_INFO +
+					" WHERE " + IotHubDataHandler.KEY_SERVICE_INFO_ID + " = ?";
+			PreparedStatement ps = connection.prepareStatement(sql);
 			ps.setLong(1, id);
-			if (ps.execute()) {
-				Log.i(TAG, "Service info " + id + " delete from db");
+			if (ps.executeUpdate() != 1) {
+				Log.e(TAG, "Service plugin " + id + " was not deleted from the database");
+				serviceInfo = null;
 			}
 			else {
-				Log.w(TAG, "Delete service info " + id + " has not affected any row");
-				service = null;
+				Log.d(TAG, "Service plugin " + id + " was deleted from the database");
 			}
 			ps.close();
-		} catch (SQLException | IotHubDatabaseException e) {
+		} 
+		catch (SQLException | IotHubDatabaseException e) {
 			e.printStackTrace();
-			return null;
+			serviceInfo = null;
 		}
-		return service;
+
+		try {
+			if (serviceInfo == null) {
+				connection.rollback();
+			}
+			connection.commit();
+			connection.setAutoCommit(true);
+		} 
+		catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return serviceInfo;
 	}
 
 	@Override

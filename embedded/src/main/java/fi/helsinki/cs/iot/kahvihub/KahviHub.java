@@ -17,6 +17,7 @@
  */
 package fi.helsinki.cs.iot.kahvihub;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -110,6 +111,11 @@ public class KahviHub {
 				try {
 					HubConfig hubConfig = ConfigurationFileParser.parseConfigurationFile(configFile);
 					Path libdir = Paths.get(hubConfig.getLibdir());
+					if (hubConfig.isDebugMode()) {
+						File dir = libdir.toFile();
+						if (dir.exists() && dir.isDirectory())
+							for(File file: dir.listFiles()) file.delete(); 
+					}
 					final IotHubHTTPD server = new IotHubHTTPD(hubConfig.getPort(), libdir);
 					init(hubConfig);
 					try {

@@ -117,6 +117,7 @@ public class PluginManager {
 				Log.d(TAG, "No need to reconfigure the plugin with the same configuration");
 			}
 			else {
+				Log.d(TAG, "Trying to configure the plugin with configuration " + enabler.getPluginConfig());
 				plugin.configure(enabler.getPluginConfig());
 			}
 			return plugin;

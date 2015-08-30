@@ -83,7 +83,7 @@ duk_ret_t tcp_socket_connect(duk_context *ctx) {
 }
 
 //This method should send a msg to the Java TCP socket on DuktapeJavascriptEngineWrapper with the unique identifier
-int jni_tcp_socket_send(duk_context *ctx, int id_socket, const char *msg) {
+int jni_tcp_socket_send(duk_context *ctx, int id_socket, const char *msg, duk_bool_t hasNotFunction) {
 	(void) duk_get_global_string(ctx, "JNIEnv");
 	JNIEnv *env = (JNIEnv *)duk_require_pointer(ctx, -1);
 
@@ -92,21 +92,21 @@ int jni_tcp_socket_send(duk_context *ctx, int id_socket, const char *msg) {
 
 	jclass objclass = (*env)->GetObjectClass(env, obj);
 	if (objclass != NULL) {
-		jmethodID mid = (*env)->GetMethodID(env, objclass, "tcpSocketSend", "(ILjava/lang/String;)Ljava/lang/String;");
+		jmethodID mid = (*env)->GetMethodID(env, objclass, "tcpSocketSend", "(ILjava/lang/String;Z)Ljava/lang/String;");
 		if (mid != NULL) {
 
 			jstring jmsg = NULL;
 			if (msg) {
 				jmsg = (*env)->NewStringUTF(env, msg);
 			}
-
-			jstring jresponse = (jstring) (*env)->CallObjectMethod(env, obj, mid, id_socket, jmsg);
+			jboolean waitForAnswer = hasNotFunction ? JNI_FALSE : JNI_TRUE;
+			jstring jresponse = (jstring) (*env)->CallObjectMethod(env, obj, mid, id_socket, jmsg, waitForAnswer);
 			if ((*env)->ExceptionCheck(env)) {
 				//duk_pop_2(ctx);
 				print_context("Got an exception while sending a message", ctx);
 				return 0;
 			}
-			if (jresponse != NULL) {
+			if (jresponse != NULL && waitForAnswer) {
 				const char *response = (*env)->GetStringUTFChars(env, jresponse, 0);
 				//Now it is time to call the onreceive
 				duk_push_this(ctx); // [this]
@@ -137,6 +137,11 @@ duk_ret_t tcp_socket_send(duk_context *ctx) {
 	duk_get_prop_string(ctx, -1, "CONNECTED");
 	duk_int_t connected_status = duk_to_int(ctx, -1);
 	duk_pop(ctx);
+
+	duk_get_prop_string(ctx, -1, "onreceive");
+	duk_bool_t hasNotFunction = duk_is_null_or_undefined(ctx, -1);
+	duk_pop(ctx);
+
 	// Get out if the socket is not connected
 	if (status != connected_status) {
 		//print_context("Could not send because the tcp socket is not connected", ctx);
@@ -148,7 +153,8 @@ duk_ret_t tcp_socket_send(duk_context *ctx) {
 	duk_get_prop_string(ctx, -1, "settings");
 	duk_get_prop_string(ctx, -1, "id");
 	duk_int_t id_socket = duk_to_int(ctx, -1);
-	duk_ret_t res = jni_tcp_socket_send(ctx, id_socket, msg);
+
+	duk_ret_t res = jni_tcp_socket_send(ctx, id_socket, msg, hasNotFunction);
 	duk_pop_n(ctx, 5);
 	return res;
 }
