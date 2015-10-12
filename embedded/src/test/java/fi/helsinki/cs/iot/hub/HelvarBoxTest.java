@@ -122,7 +122,6 @@ public class HelvarBoxTest {
 		return null;
 	}
 	
-	@Test
 	public void testNative() {
 		int port = 50000;
 		String address = "10.254.1.1";
@@ -182,7 +181,6 @@ public class HelvarBoxTest {
 	}
 
 
-	@Test
 	public void test() {
 		int port = 50000;
 		String address = "10.254.1.1";
