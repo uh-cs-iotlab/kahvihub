@@ -28,7 +28,7 @@ import fi.helsinki.cs.iot.hub.utils.socketserver.MultiThreadedSocketServer;
 import fi.helsinki.cs.iot.hub.utils.socketserver.SocketProtocol;
 import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
-import fi.helsinki.cs.iot.kahvihub.IotHubDbHandlerSqliteJDBCImpl;
+import fi.helsinki.cs.iot.kahvihub.database.sqliteJdbc.IotHubDbHandlerSqliteJDBCImpl;
 
 public class LondonIcc2015Test {
 
