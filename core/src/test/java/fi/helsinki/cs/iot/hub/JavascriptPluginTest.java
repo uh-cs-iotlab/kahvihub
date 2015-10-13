@@ -28,6 +28,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -43,6 +44,7 @@ import java.util.concurrent.Executors;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -65,10 +67,22 @@ public class JavascriptPluginTest {
 	 */
 	@Before
 	public void setUp() throws Exception {
-		libdir = Paths.get(System.getProperty("user.dir"));
+		libdir = Files.createTempDirectory(Paths.get(System.getProperty("user.dir")), "jtest");
+		//Delete the temporary directory
+		libdir.toFile().deleteOnExit();
 		PluginManager.getInstance().setJavascriptPluginHelper(
 				new JavascriptPluginHelperImpl(libdir));
 	}
+	
+	
+	@After
+    public void tearDown() {
+        for (File f : libdir.toFile().listFiles()) {
+        	f.delete();
+        }
+        libdir.toFile().delete();
+        libdir = null;
+    }
 
 	private Plugin makePluginNeedConfiguration(String pluginName, int type) {
 		PluginManager.getInstance().removeAllPlugins();

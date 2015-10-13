@@ -65,18 +65,9 @@ public class SocketServerTest {
 			return null;
 		}
 		
-		public void check(int count) {
-			String input = null;
-			while ((input = processInput(input)) != null) {
-				if ("Bye.".equals(input)) {
-					assertEquals(input, 1, messages.get(input).intValue());
-				}
-				else {
-					assertEquals(input, count, messages.get(input).intValue());
-				}
-			}
+		public void check() {
+			assertEquals(1, messages.get("Bye.").intValue());
 		}
-		
 	}
 	
 	private class KnockKnockClientListener {
@@ -174,8 +165,7 @@ public class SocketServerTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		knockKnockProtocol.check(3);
+		knockKnockProtocol.check();
 	}
 
 }
