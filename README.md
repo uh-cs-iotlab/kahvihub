@@ -8,6 +8,11 @@ Authors
 + http://www.cs.helsinki.fi/u/mineraud/
 + http://github.com/jmineraud
 
+Known issues
+------------
+
+* At the moment, the default JVM version should be 1.7
+
 Licence
 -------
 

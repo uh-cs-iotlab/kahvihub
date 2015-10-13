@@ -1,50 +1,49 @@
-apply plugin: 'java'
+allprojects {
 
-sourceCompatibility = 1.7
-version = '1.0'
-
-jar {
-    manifest {
-        attributes 'Implementation-Title': 'Full Java implementation of the IoT Hub',
-                   'Implementation-Version': version
+	task hello << {task -> println "Building $task.project.name" }
+	
+	apply plugin: 'eclipse'
+	
+	repositories {
+        mavenCentral()
     }
+    
 }
 
-//create a single Jar with all dependencies
-task jarStandalone (type: Jar) {
-	manifest {
-        attributes 'Implementation-Title': 'Full Java implementation of the IoT Hub',  
-        	'Implementation-Version': version,
-        	'Main-Class': 'fi.helsinki.cs.iot.kahvihub.KahviHub'
-    }
-    baseName = project.name + '-standalone'
-    from { configurations.runtime.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
-}
- 
-repositories {
-	mavenLocal()
-    mavenCentral()
-} 
-
-dependencies {
-    compile group: 'commons-collections', name: 'commons-collections', version: '3.2'
-    testCompile group: 'junit', name: 'junit', version: '4.+'
-    compile 'org.json:json:20090211'
-    compile 'fi.helsinki.cs.iot.hub:java-iothub-core:1.0'
-    compile 'fi.helsinki.cs.iot.hub:kahvihub-native-plugin:1.0'
-    compile 'commons-cli:commons-cli:1.2'
-    runtime 'org.xerial:sqlite-jdbc:3.7.15-M1'
+project(':core') {
+	apply plugin: 'java'
+	version = '0.1.0'
+	
+	jar {
+    	baseName = 'kahvihub-core'
+    	version =  '0.1.0'
+	}
+	
+	tasks.withType(JavaCompile) {
+		options.encoding = 'UTF-8'
+	}
+	
 }
 
-test {
-    systemProperties 'property': 'value'
+project(':embedded') {
+	
+	apply plugin: 'application'
+	
+	jar {
+    	baseName = 'kahvihub-embedded'
+    	version =  '0.1.0'
+    	manifest {
+        	attributes 'Implementation-Title': 'Full Java implementation of the IoT Hub',
+            		   'Implementation-Version': version
+    	}
+	}
+	
+	tasks.withType(JavaCompile) {
+		options.encoding = 'UTF-8'
+	}
+	
 }
 
-uploadArchives {
-    repositories {
-       flatDir {
-           dirs 'repos'
-       }
-    }
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.6'
 }

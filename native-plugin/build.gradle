@@ -1,0 +1,12 @@
+apply plugin: 'java'
+
+sourceCompatibility = 1.7
+version = '1.0'
+group = 'fi.helsinki.cs.iot.hub'
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'Library needed for developing native (Java) plugins for Kahvihub',
+                   'Implementation-Version': version
+    }
+}

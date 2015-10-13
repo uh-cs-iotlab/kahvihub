@@ -1,0 +1,3 @@
+include 'embedded'
+include 'native-plugin'
+include 'core'
