@@ -243,11 +243,14 @@ JNIEXPORT jstring JNICALL Java_fi_helsinki_cs_iot_hub_jsengine_DuktapeJavascript
 	//print_context("After loading the environment", ctx);
 	const char *res = loadScriptString(env, ctx, script);
 	//print_context("After loading the script", ctx);
-	duk_destroy_heap(ctx);
+	if (res == NULL) {
+		duk_destroy_heap(ctx);
+		return NULL;
+	}
 	jstring jres = (*env)->NewStringUTF(env, res);
+	duk_destroy_heap(ctx);
 	return jres;
 }
-
 
 
 int library_has_prop(JNIEnv *env, duk_context *ctx, const char* function) {

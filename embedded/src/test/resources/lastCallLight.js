@@ -87,6 +87,7 @@ var LastCallLight = {
 			this.checkRooms(this.config.rooms, this.config.server, this.config.interval);
 		}
 		else {
+			print('Test 2: ' + this.config.interval);
 			setInterval(this.checkRooms, this.config.interval, this.config.rooms, this.config.server, this.config.interval / 2);
 		}
 	}

@@ -19,7 +19,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 import fi.helsinki.cs.iot.hub.database.IotHubDataAccess;
 import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
@@ -192,6 +191,7 @@ public class HelvarBoxTest {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+		System.out.println("Go hetre");
 		org.junit.Assume.assumeTrue(isHostAvailable);
 
 		try {

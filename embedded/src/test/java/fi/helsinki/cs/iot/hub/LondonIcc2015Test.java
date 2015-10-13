@@ -2,13 +2,8 @@ package fi.helsinki.cs.iot.hub;
 
 import static org.junit.Assert.*;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
@@ -18,8 +13,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -31,6 +24,8 @@ import fi.helsinki.cs.iot.hub.jsengine.DuktapeJavascriptEngineWrapper;
 import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo;
 import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo.Type;
 import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
+import fi.helsinki.cs.iot.hub.utils.socketserver.MultiThreadedSocketServer;
+import fi.helsinki.cs.iot.hub.utils.socketserver.SocketProtocol;
 import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
 import fi.helsinki.cs.iot.kahvihub.IotHubDbHandlerSqliteJDBCImpl;
@@ -163,13 +158,12 @@ public class LondonIcc2015Test {
 			return new Response(Response.Status.NOT_FOUND, "text/plain", "Not found");			
 		}
 	}
+	
+	private class HelvarBoxProtocol implements SocketProtocol {
 
-	private class SimpleHelvarnetRouter {
-		List<String> msgReceivedByServer = new ArrayList<String>();
-		boolean stopTheThread;
-		final int port;
+		List<String> msgReceived;
 		final Map<String, String> queriesReplies;
-
+		
 		static final String QUERY_GROUPS = ">V:2,C:165#";
 		static final String QUERY_GROUP_ROOM_1 = ">V:2,C:164,G:1#";
 		static final String QUERY_GROUP_ROOM_2 = ">V:2,C:164,G:2#";
@@ -196,122 +190,61 @@ public class LondonIcc2015Test {
 		static final String FADE_OUT_LUM_ROOM_1 = ">V:2,C:14,L:100,F:200,@1.1.1.1#";
 		static final String FADE_OUT_LUM_ROOM_2 = ">V:2,C:14,L:100,F:200,@1.1.2.1#";
 		
-		SimpleHelvarnetRouter(String address, int port) {
-			this.port = port;
-			this.stopTheThread = false;
-			this.queriesReplies = new HashMap<>();
-			this.queriesReplies.put(QUERY_GROUPS, "?V:2,C:165=1,2#");
-			this.queriesReplies.put(QUERY_GROUP_ROOM_1, "?V:2,C:164,G:1=@1.1.1.1,@1.1.1.61,@1.1.1.62#");
-			this.queriesReplies.put(QUERY_GROUP_ROOM_2, "?V:2,C:164,G:2=@1.1.2.1,@1.1.2.61,@1.1.2.62#");
-			this.queriesReplies.put(QUERY_DEVICE_TYPE_LUM_ROOM_1, "?V:2,C:104,@1.1.1.1=1537#");
-			this.queriesReplies.put(QUERY_DEVICE_TYPE_LUM_ROOM_2, "?V:2,C:104,@1.1.2.1=1537#");
-			this.queriesReplies.put(QUERY_DEVICE_TYPE_BUTTONS_ROOM_1, "?V:2,C:104,@1.1.1.1=1265666#");
-			this.queriesReplies.put(QUERY_DEVICE_TYPE_BUTTONS_ROOM_2, "?V:2,C:104,@1.1.2.1=1265666#");
-			this.queriesReplies.put(QUERY_DEVICE_TYPE_MULTISENSOR_ROOM_1, "?V:2,C:104,@1.1.1.1=3220738#");
-			this.queriesReplies.put(QUERY_DEVICE_TYPE_MULTISENSOR_ROOM_2, "?V:2,C:104,@1.1.2.1=3220738#");
-			this.queriesReplies.put(QUERY_DEVICE_DESCRIPTION_LUM_ROOM_1, "?V:2,C:106,@1.1.1.1=Meeting Room 1/LED luminaire#");
-			this.queriesReplies.put(QUERY_DEVICE_DESCRIPTION_LUM_ROOM_2, "?V:2,C:106,@1.1.2.1=Meeting Room 2/LED luminaire#");
-			this.queriesReplies.put(QUERY_DEVICE_DESCRIPTION_BUTTONS_ROOM_1, "?V:2,C:106,@1.1.1.1=Meeting Room 1/7-button#");
-			this.queriesReplies.put(QUERY_DEVICE_DESCRIPTION_BUTTONS_ROOM_2, "?V:2,C:106,@1.1.2.1=Meeting Room 2/7-button#");
-			this.queriesReplies.put(QUERY_DEVICE_DESCRIPTION_MULTISENSOR_ROOM_1, "?V:2,C:106,@1.1.1.1=Meeting Room 1/Multisensor 312#");
-			this.queriesReplies.put(QUERY_DEVICE_DESCRIPTION_MULTISENSOR_ROOM_2, "?V:2,C:106,@1.1.2.1=Meeting Room 2/Multisensor 312#");
-			this.queriesReplies.put(QUERY_DEVICE_STATE_LUM_ROOM_1, "?V:2,C:110,@1.1.1.1=0#");
-			this.queriesReplies.put(QUERY_DEVICE_STATE_LUM_ROOM_2, "?V:2,C:110,@1.1.2.1=0#");
-			this.queriesReplies.put(QUERY_DEVICE_STATE_BUTTONS_ROOM_1, "?V:2,C:110,@1.1.1.1=0#");
-			this.queriesReplies.put(QUERY_DEVICE_STATE_BUTTONS_ROOM_2, "?V:2,C:110,@1.1.2.1=0#");
-			this.queriesReplies.put(QUERY_DEVICE_STATE_MULTISENSOR_ROOM_1, "?V:2,C:110,@1.1.1.1=0#");
-			this.queriesReplies.put(QUERY_DEVICE_STATE_MULTISENSOR_ROOM_2, "?V:2,C:110,@1.1.2.1=0#");
-			this.queriesReplies.put(FADE_IN_LUM_ROOM_1, "");
-			this.queriesReplies.put(FADE_IN_LUM_ROOM_2, "");
-			this.queriesReplies.put(FADE_OUT_LUM_ROOM_1, "");
-			this.queriesReplies.put(FADE_OUT_LUM_ROOM_2, "");
+		public HelvarBoxProtocol() {
+			msgReceived = new ArrayList<String>();
+			queriesReplies = new HashMap<>();
+			queriesReplies.put(QUERY_GROUPS, "?V:2,C:165=1,2#");
+			queriesReplies.put(QUERY_GROUP_ROOM_1, "?V:2,C:164,G:1=@1.1.1.1,@1.1.1.61,@1.1.1.62#");
+			queriesReplies.put(QUERY_GROUP_ROOM_2, "?V:2,C:164,G:2=@1.1.2.1,@1.1.2.61,@1.1.2.62#");
+			queriesReplies.put(QUERY_DEVICE_TYPE_LUM_ROOM_1, "?V:2,C:104,@1.1.1.1=1537#");
+			queriesReplies.put(QUERY_DEVICE_TYPE_LUM_ROOM_2, "?V:2,C:104,@1.1.2.1=1537#");
+			queriesReplies.put(QUERY_DEVICE_TYPE_BUTTONS_ROOM_1, "?V:2,C:104,@1.1.1.1=1265666#");
+			queriesReplies.put(QUERY_DEVICE_TYPE_BUTTONS_ROOM_2, "?V:2,C:104,@1.1.2.1=1265666#");
+			queriesReplies.put(QUERY_DEVICE_TYPE_MULTISENSOR_ROOM_1, "?V:2,C:104,@1.1.1.1=3220738#");
+			queriesReplies.put(QUERY_DEVICE_TYPE_MULTISENSOR_ROOM_2, "?V:2,C:104,@1.1.2.1=3220738#");
+			queriesReplies.put(QUERY_DEVICE_DESCRIPTION_LUM_ROOM_1, "?V:2,C:106,@1.1.1.1=Meeting Room 1/LED luminaire#");
+			queriesReplies.put(QUERY_DEVICE_DESCRIPTION_LUM_ROOM_2, "?V:2,C:106,@1.1.2.1=Meeting Room 2/LED luminaire#");
+			queriesReplies.put(QUERY_DEVICE_DESCRIPTION_BUTTONS_ROOM_1, "?V:2,C:106,@1.1.1.1=Meeting Room 1/7-button#");
+			queriesReplies.put(QUERY_DEVICE_DESCRIPTION_BUTTONS_ROOM_2, "?V:2,C:106,@1.1.2.1=Meeting Room 2/7-button#");
+			queriesReplies.put(QUERY_DEVICE_DESCRIPTION_MULTISENSOR_ROOM_1, "?V:2,C:106,@1.1.1.1=Meeting Room 1/Multisensor 312#");
+			queriesReplies.put(QUERY_DEVICE_DESCRIPTION_MULTISENSOR_ROOM_2, "?V:2,C:106,@1.1.2.1=Meeting Room 2/Multisensor 312#");
+			queriesReplies.put(QUERY_DEVICE_STATE_LUM_ROOM_1, "?V:2,C:110,@1.1.1.1=0#");
+			queriesReplies.put(QUERY_DEVICE_STATE_LUM_ROOM_2, "?V:2,C:110,@1.1.2.1=0#");
+			queriesReplies.put(QUERY_DEVICE_STATE_BUTTONS_ROOM_1, "?V:2,C:110,@1.1.1.1=0#");
+			queriesReplies.put(QUERY_DEVICE_STATE_BUTTONS_ROOM_2, "?V:2,C:110,@1.1.2.1=0#");
+			queriesReplies.put(QUERY_DEVICE_STATE_MULTISENSOR_ROOM_1, "?V:2,C:110,@1.1.1.1=0#");
+			queriesReplies.put(QUERY_DEVICE_STATE_MULTISENSOR_ROOM_2, "?V:2,C:110,@1.1.2.1=0#");
+			queriesReplies.put(FADE_IN_LUM_ROOM_1, "");
+			queriesReplies.put(FADE_IN_LUM_ROOM_2, "");
+			queriesReplies.put(FADE_OUT_LUM_ROOM_1, "");
+			queriesReplies.put(FADE_OUT_LUM_ROOM_2, "");
 		}
-
-		class SimpleHelvarnetServerThread implements Runnable {
-
-			private Socket socket;
-
-			public SimpleHelvarnetServerThread(Socket s) throws IOException {
-				this.socket = s;
-			}
-
-			@Override
-			public void run() {
-				// do something with in and out
-				if (stopTheThread) {
-					return;
-				}
-				try {
-					PrintWriter out =
-							new PrintWriter(socket.getOutputStream(), true);
-					BufferedReader in = new BufferedReader(
-							new InputStreamReader(socket.getInputStream()));
-					String inputLine = in.readLine();
-					if (inputLine != null) {
-						msgReceivedByServer.add(inputLine);
-						String answer = queriesReplies.get(inputLine);
-						if (answer != null) {
-							//If the answer is now empty I need to provide the answer
-							if(!answer.isEmpty()) {
-								out.println(answer);
-							}
-						}
-						else {
-							//Send the message about 
-							if (inputLine.length() > 0 && (inputLine.startsWith("?") || inputLine.startsWith(">"))) {
-								out.println("!" + inputLine.substring(1));
-							}
-							else {
-								out.println("!" + inputLine);
-							}
-						}
-					}
-					out.close();
-					in.close();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-					fail(e.getMessage());
-				}
-			}
-		}
-
-		void start() {
-			new Thread(new Runnable() {
-				@Override
-				public void run() {
-					final ExecutorService service = Executors.newCachedThreadPool();
-					try {
-						ServerSocket serverSocket = new ServerSocket(port);
-						while(!stopTheThread) {
-							Socket socket = serverSocket.accept();
-							service.submit(new SimpleHelvarnetServerThread(socket));
-						}
-						serverSocket.close();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-						fail(e.getMessage());
-					}
-				}
-			}).start();
-		}
-
-		void stop() throws IOException {
-			this.stopTheThread = true;
-		}
-
-		List<String> getMsgReceivedByServer() {
-			return msgReceivedByServer;
-		}
-
+		
 		@Override
-		public String toString() {
-			String msgList = "messages received = [ ";
-			for(String msg : getMsgReceivedByServer()) {
-				msgList += String.format("'%s'\n", msg);
+		public String processInput(String input) {
+			String answer = queriesReplies.get(input);
+			if (input != null) {
+				msgReceived.add(input);
 			}
-			return msgList + "]";
+			if (answer != null) {
+				return answer;
+			}
+			else {
+				if (input == null) {
+					return null;
+				}
+				//Send the message about 
+				else if (input.length() > 0 && (input.startsWith("?") || input.startsWith(">"))) {
+					return "!" + input.substring(1);
+				}
+				else {
+					return "!" + input;
+				}
+			}
+		}
+
+		public List<String> getMsgReceived() {
+			return msgReceived;
 		}
 	}
 
@@ -339,7 +272,6 @@ public class LondonIcc2015Test {
 		String gcalKey = "myCalKey";
 		int gcalPort = 8082;
 		int helvarPort = 50000;
-		String helvarAddress = "10.254.1.1";
 		int iothubPort = 8081;
 		String gCalPluginResourceName = "/gCalPlugin.js";
 		String gCalPluginName = "GCalPlugin";
@@ -352,7 +284,8 @@ public class LondonIcc2015Test {
 			GCalServer gcalServer = new GCalServer(gcalPort);
 			gcalServer.add("room1", gcalKey, false);
 			gcalServer.add("room2", gcalKey, true);
-			SimpleHelvarnetRouter helvarRouter = new SimpleHelvarnetRouter(helvarAddress, helvarPort);
+			HelvarBoxProtocol helvarBoxProtocol = new HelvarBoxProtocol();
+			MultiThreadedSocketServer helvarRouter = new MultiThreadedSocketServer(helvarBoxProtocol, helvarPort);
 			
 			Path iothubLibdir = Files.createTempDirectory("IotHubHTTPDTest");
 			iothubLibdir.toFile().deleteOnExit();
@@ -484,7 +417,7 @@ public class LondonIcc2015Test {
 			//Now I need to create the plugin for the application
 			File lastCallLightPluginFile = new File(LondonIcc2015Test.class.getResource(lastCallLightPluginResourceName).toURI());
 			assertTrue(lastCallLightPluginFile.exists());
-
+			
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubPort + "/plugins/", 
 					makeJsonObjectForPlugin(lastCallLightPluginName, null, Type.JAVASCRIPT, lastCallLightPluginFile, true).toString());
 			JSONObject resultPostLastCallLightPlugin = new JSONObject(res);
@@ -501,6 +434,7 @@ public class LondonIcc2015Test {
 			config = new JSONObject();
 			config.put("server", "http://127.0.0.1:" + iothubPort);
 			config.put("oneshot", true);
+			config.put("interval", 3000);
 			JSONArray rooms = new JSONArray();
 			JSONObject room1 = new JSONObject();
 			room1.put("calendar", "atomicFeature1");
@@ -516,18 +450,18 @@ public class LondonIcc2015Test {
 			rooms.put(room2);
 			config.put("rooms", rooms);
 			jservice.put("configuration", config);
-
+			
 			// I should get an enable with no features as it is not configured
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("POST", "http://127.0.0.1:" + iothubPort + "/services/", jservice.toString());
 			JSONObject expectedService = new JSONObject(res);
 			assertEquals(1, expectedService.getInt("id"));
 			assertTrue(expectedService.has("config"));
 			
-			int currentNumberOfMessage = helvarRouter.getMsgReceivedByServer().size();
+			int currentNumberOfMessage = helvarBoxProtocol.getMsgReceived().size();
 			
 			res = DuktapeJavascriptEngineWrapper.performJavaHttpRequest("GET", "http://127.0.0.1:" + iothubPort + "/services/" + lastCallLightPluginName + "/start", null);
 			long start = System.currentTimeMillis();
-			while(helvarRouter.getMsgReceivedByServer().size() < currentNumberOfMessage + 2) {
+			while(helvarBoxProtocol.getMsgReceived().size() < currentNumberOfMessage + 2) {
 				long now = System.currentTimeMillis();
 				if (now - start > 5000) {
 					fail("The helvernet server have not received the commands in time");

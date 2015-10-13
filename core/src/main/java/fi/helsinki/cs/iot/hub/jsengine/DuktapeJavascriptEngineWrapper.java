@@ -419,6 +419,7 @@ public class DuktapeJavascriptEngineWrapper {
 		TcpSocket socket;
 		try {
 			if (!TcpSocket.checkHostAvailability(address, port)) {
+				System.err.println("Failed");
 				return -1;
 			}
 			socket = new TcpSocket(lastSocketId + 1, address, port);

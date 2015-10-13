@@ -24,6 +24,9 @@ uploadArchives {
 }
 
 test {
+	beforeTest { descriptor ->
+    	logger.lifecycle("Running test: ${descriptor}")
+  	}
     jvmArgs = ['-Djava.library.path=../jni']
 }
 

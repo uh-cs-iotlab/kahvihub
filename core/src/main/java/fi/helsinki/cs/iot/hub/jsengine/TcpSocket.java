@@ -73,10 +73,9 @@ public class TcpSocket extends Socket {
 			System.err.println("Cannot perform the operation");
 			return null;
 		}
-
-		writer.write(query);
+		writer.write(query + "\n");
 		writer.flush();
-
+		
 		if (!waitForAnswer) {
 			return "";
 		}
