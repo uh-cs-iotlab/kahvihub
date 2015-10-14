@@ -56,9 +56,9 @@ a {
 .page-header {
   color: #fff;
   text-align: center;
-  <!--background-color: #dc9f1b;
-  background-image: linear-gradient(120deg, #155799, #159957); -->
   background-color: #159957;
+  background-image: linear-gradient(120deg, #155799, #159957); -->
+   background-color: #dc9f1b;
   background-image: linear-gradient(120deg, #aaad60, #dc9f1b);
 }
 
