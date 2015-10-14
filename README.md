@@ -1,5 +1,5 @@
 # kahvihub
-Full Java implementation of the IoT Hub
+Multi build java project implementation of the IoT Hub
 
 Authors
 -------
