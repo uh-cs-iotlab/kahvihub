@@ -12,7 +12,7 @@ dependencies {
     compile 'org.json:json:20090211'
     compile 'commons-cli:commons-cli:1.2'
     compile 'commons-codec:commons-codec:1.4'
-    runtime 'org.xerial:sqlite-jdbc:3.8.11.1'
+    runtime 'org.xerial:sqlite-jdbc:3.8.11.2'
 }
 
 uploadArchives {

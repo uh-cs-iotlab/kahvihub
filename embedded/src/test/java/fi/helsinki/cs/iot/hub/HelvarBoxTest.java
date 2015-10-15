@@ -27,7 +27,7 @@ import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo;
 import fi.helsinki.cs.iot.hub.model.enabler.BasicPluginInfo.Type;
 import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
 import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
-import fi.helsinki.cs.iot.kahvihub.IotHubDbHandlerSqliteJDBCImpl;
+import fi.helsinki.cs.iot.kahvihub.database.sqliteJdbc.IotHubDbHandlerSqliteJDBCImpl;
 
 /**
  * @author mineraud

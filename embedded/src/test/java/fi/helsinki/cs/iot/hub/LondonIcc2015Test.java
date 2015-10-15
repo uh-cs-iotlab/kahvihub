@@ -28,7 +28,7 @@ import fi.helsinki.cs.iot.hub.utils.socketserver.MultiThreadedSocketServer;
 import fi.helsinki.cs.iot.hub.utils.socketserver.SocketProtocol;
 import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
 import fi.helsinki.cs.iot.hub.webserver.NanoHTTPD;
-import fi.helsinki.cs.iot.kahvihub.IotHubDbHandlerSqliteJDBCImpl;
+import fi.helsinki.cs.iot.kahvihub.database.sqliteJdbc.IotHubDbHandlerSqliteJDBCImpl;
 
 public class LondonIcc2015Test {
 
@@ -463,8 +463,8 @@ public class LondonIcc2015Test {
 			long start = System.currentTimeMillis();
 			while(helvarBoxProtocol.getMsgReceived().size() < currentNumberOfMessage + 2) {
 				long now = System.currentTimeMillis();
-				if (now - start > 5000) {
-					fail("The helvernet server have not received the commands in time");
+				if (now - start > 60000) {
+					fail("The helvarnet server have not received the commands in time");
 				}
 			}
 			iotHubHTTPD.stop();

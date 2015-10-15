@@ -38,6 +38,7 @@ import fi.helsinki.cs.iot.hub.webserver.IotHubHTTPD;
 import fi.helsinki.cs.iot.kahvihub.conf.ConfigurationFileParser;
 import fi.helsinki.cs.iot.kahvihub.conf.ConfigurationParsingException;
 import fi.helsinki.cs.iot.kahvihub.conf.HubConfig;
+import fi.helsinki.cs.iot.kahvihub.database.sqliteJdbc.IotHubDbHandlerSqliteJDBCImpl;
 
 /**
  * 
