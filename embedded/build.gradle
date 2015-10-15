@@ -12,8 +12,7 @@ dependencies {
     compile 'org.json:json:20090211'
     compile 'commons-cli:commons-cli:1.2'
     compile 'commons-codec:commons-codec:1.4'
-    compile 'com.almworks.sqlite4java:sqlite4java:1.0.392'
-    compile 'org.xerial:sqlite-jdbc:3.8.11.2'
+    runtime 'org.xerial:sqlite-jdbc:3.8.11.2'
 }
 
 uploadArchives {
