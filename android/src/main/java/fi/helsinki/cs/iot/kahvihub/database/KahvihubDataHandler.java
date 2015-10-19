@@ -12,18 +12,21 @@ import fi.helsinki.cs.iot.hub.database.IotHubDatabaseException;
 public class KahvihubDataHandler extends IotHubDataHandler {
 
     private KahvihubDatabase database;
-    private KahvihubDbHelper helper;
+    private static final String DATABASE_NAME = "kahvihub.db";
+    private static final int DATABASE_VERSION = 1;
+    private static final boolean DEBUG_MODE = true;
+    private final Context context;
 
     public KahvihubDataHandler(Context context) {
-        super(KahvihubDbHelper.DATABASE_NAME, KahvihubDbHelper.DATABASE_VERSION, KahvihubDbHelper.debugMode);
+        super(DATABASE_NAME, DATABASE_VERSION, DEBUG_MODE);
         this.database = null;
-        this.helper = new KahvihubDbHelper(context);
+        this.context = context;
     }
 
     @Override
     public IotHubDatabase openDatabase() throws IotHubDatabaseException {
         if (database == null) {
-            database = new KahvihubDatabase(helper);
+            database = new KahvihubDatabase(context, DATABASE_NAME, DATABASE_VERSION);
         }
         if (!database.isOpen()) {
             database.open();

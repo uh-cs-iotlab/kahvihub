@@ -9,17 +9,12 @@ import android.database.sqlite.SQLiteOpenHelper;
  */
 public class KahvihubDbHelper extends SQLiteOpenHelper {
 
-    static final String DATABASE_NAME = "kahvihub.db";
-    static final int DATABASE_VERSION = 1;
-    static final boolean debugMode = true;
-
-    public KahvihubDbHelper(Context context) {
-        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    public KahvihubDbHelper(Context context, String databaseName, int databaseVersion) {
+        super(context, databaseName, null, databaseVersion);
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-
     }
 
     @Override
