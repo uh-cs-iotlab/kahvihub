@@ -24,7 +24,7 @@ task buildNative(type: Exec, description: 'Compile JNI source files') {
 
 task cleanNative(type: Exec, description: 'Clean JNI object files') {
 	commandLine 'make',
-	'-C', '../jni', 
+	'-C', '../jni',
 	'clean'
 }
 

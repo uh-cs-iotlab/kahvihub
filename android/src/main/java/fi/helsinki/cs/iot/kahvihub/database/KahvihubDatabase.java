@@ -128,8 +128,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                 values.put(IotHubDataHandler.KEY_KEYWORD_FEED_KEYWORD_ID, keywordId);
                 if (isFeed) {
                     values.put(IotHubDataHandler.KEY_KEYWORD_FEED_FEED_ID, id);
-                }
-                else {
+                } else {
                     values.put(IotHubDataHandler.KEY_KEYWORD_FIELD_FIELD_ID, id);
                 }
                 if (database.insert(isFeed ? IotHubDataHandler.TABLE_KEYWORD_FEED_REL : IotHubDataHandler.TABLE_KEYWORD_FIELD_REL,
@@ -146,8 +145,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                     values.put(IotHubDataHandler.KEY_KEYWORD_FEED_KEYWORD_ID, insertId);
                     if (isFeed) {
                         values.put(IotHubDataHandler.KEY_KEYWORD_FEED_FEED_ID, id);
-                    }
-                    else {
+                    } else {
                         values.put(IotHubDataHandler.KEY_KEYWORD_FIELD_FIELD_ID, id);
                     }
                     if (database.insert(isFeed ? IotHubDataHandler.TABLE_KEYWORD_FEED_REL : IotHubDataHandler.TABLE_KEYWORD_FIELD_REL,
@@ -299,12 +297,10 @@ public class KahvihubDatabase implements IotHubDatabase {
                     String feedMetadata = cursor.getString(2);
                     List<String> keywords = getFeedKeywords(id);
                     feed = new AtomicFeed(id, feedName, feedMetadata, keywords, feature);
-                }
-                else {
+                } else {
                     Log.e(TAG, "The feature does not exist");
                 }
-            }
-            else {
+            } else {
                 Log.e(TAG, "No results for this request: " + sql);
             }
             cursor.close();
@@ -315,7 +311,7 @@ public class KahvihubDatabase implements IotHubDatabase {
         }
     }
 
-    private List<AtomicFeed> getAtomicFeeds () {
+    private List<AtomicFeed> getAtomicFeeds() {
         List<AtomicFeed> atomicFeedList = new ArrayList<>();
         try {
             checkOpenness();
@@ -347,7 +343,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_FIELD_METADATA, fd.getMetadata());
             values.put(IotHubDataHandler.KEY_FIELD_TYPE, fd.getType());
             values.put(IotHubDataHandler.KEY_FIELD_OPTIONAL, fd.isOptional() ? 1 : 0);
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_FIELD,
                     null,
                     values);
@@ -384,7 +380,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_FEED_STORAGE, storage ? 1 : 0);
             values.put(IotHubDataHandler.KEY_FEED_READABLE, readable ? 1 : 0);
             values.put(IotHubDataHandler.KEY_FEED_WRITABLE, writable ? 1 : 0);
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_FEED,
                     null,
                     values);
@@ -405,8 +401,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                     Log.e(TAG, "Retrieving feed " + name + " did not work");
                     composedFeed = null;
                 }
-            }
-            else {
+            } else {
                 Log.e(TAG, "The insert of feed " + name + " did not work");
             }
         } catch (IotHubDatabaseException e) {
@@ -414,9 +409,9 @@ public class KahvihubDatabase implements IotHubDatabase {
             composedFeed = null;
         }
         if (composedFeed != null) {
-                database.setTransactionSuccessful();
-            }
-            database.endTransaction();
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
 
         return composedFeed;
     }
@@ -465,8 +460,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                 } while (cursor.moveToNext());
                 List<String> keywords = getFeedKeywords(id);
                 composedFeed = new ComposedFeed(id, feedName, feedMetadata, keywords, feedStorage, feedReadable, feedWritable, fieldList);
-            }
-            else {
+            } else {
                 Log.e(TAG, "No results for this request: " + sql);
             }
             cursor.close();
@@ -477,7 +471,7 @@ public class KahvihubDatabase implements IotHubDatabase {
         }
     }
 
-    private List<ComposedFeed> getComposedFeeds () {
+    private List<ComposedFeed> getComposedFeeds() {
         List<ComposedFeed> composedFeedList = new ArrayList<>();
         try {
             checkOpenness();
@@ -520,8 +514,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                 ExecutableFeedDescription description = new ExecutableFeedDescription();
                 List<String> keywords = getFeedKeywords(id);
                 executableFeed = new ExecutableFeed(id, feedName, feedMetadata, keywords, feedReadable, feedWritable, description);
-            }
-            else {
+            } else {
                 Log.e(TAG, "No results for this request: " + sql);
             }
             cursor.close();
@@ -552,7 +545,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_FEED_STORAGE, 0);
             values.put(IotHubDataHandler.KEY_FEED_READABLE, readable ? 1 : 0);
             values.put(IotHubDataHandler.KEY_FEED_WRITABLE, writable ? 1 : 0);
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_FEED,
                     null,
                     values);
@@ -573,18 +566,17 @@ public class KahvihubDatabase implements IotHubDatabase {
                     Log.e(TAG, "Retrieving feed " + name + " did not work");
                     executableFeed = null;
                 }
-            }
-            else {
+            } else {
                 Log.e(TAG, "The insert of feed " + name + " did not work");
             }
         } catch (IotHubDatabaseException e) {
             e.printStackTrace();
             executableFeed = null;
         }
-         if (executableFeed != null) {
-                database.setTransactionSuccessful();
-            }
-            database.endTransaction();
+        if (executableFeed != null) {
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
 
         return executableFeed;
     }
@@ -603,7 +595,7 @@ public class KahvihubDatabase implements IotHubDatabase {
         // Add a table to store the informations about executable feeds
     }
 
-    private List<ExecutableFeed> getExecutableFeeds () {
+    private List<ExecutableFeed> getExecutableFeeds() {
         List<ExecutableFeed> executableFeedList = new ArrayList<>();
         try {
             checkOpenness();
@@ -634,14 +626,11 @@ public class KahvihubDatabase implements IotHubDatabase {
                 String type = cursor.getString(cursor.getColumnIndex(IotHubDataHandler.KEY_FEED_TYPE));
                 if (IotHubDataHandler.COMPOSED_FEED.equals(type)) {
                     feed = getComposedFeed(id);
-                }
-                else if (IotHubDataHandler.ATOMIC_FEED.equals(type)) {
+                } else if (IotHubDataHandler.ATOMIC_FEED.equals(type)) {
                     feed = getAtomicFeed(id);
-                }
-                else if (IotHubDataHandler.EXECUTABLE_FEED.equals(type)) {
+                } else if (IotHubDataHandler.EXECUTABLE_FEED.equals(type)) {
                     feed = getExecutableFeed(id);
-                }
-                else {
+                } else {
                     Log.e(TAG, "Uknown type of feed '" + type + "', must be (" +
                             IotHubDataHandler.ATOMIC_FEED + ", " +
                             IotHubDataHandler.COMPOSED_FEED + ", " +
@@ -669,14 +658,11 @@ public class KahvihubDatabase implements IotHubDatabase {
                 String type = cursor.getString(cursor.getColumnIndex(IotHubDataHandler.KEY_FEED_TYPE));
                 if (IotHubDataHandler.COMPOSED_FEED.equals(type)) {
                     feed = getComposedFeed(id);
-                }
-                else if (IotHubDataHandler.ATOMIC_FEED.equals(type)) {
+                } else if (IotHubDataHandler.ATOMIC_FEED.equals(type)) {
                     feed = getAtomicFeed(id);
-                }
-                else if (IotHubDataHandler.EXECUTABLE_FEED.equals(type)) {
+                } else if (IotHubDataHandler.EXECUTABLE_FEED.equals(type)) {
                     feed = getExecutableFeed(id);
-                }
-                else {
+                } else {
                     Log.e(TAG, "Uknown type of feed '" + type + "', must be (" +
                             IotHubDataHandler.ATOMIC_FEED + ", " +
                             IotHubDataHandler.COMPOSED_FEED + ", " +
@@ -712,10 +698,9 @@ public class KahvihubDatabase implements IotHubDatabase {
             }
             int res = database.delete(IotHubDataHandler.TABLE_FEED,
                     IotHubDataHandler.KEY_FEED_NAME + " = ?", new String[]{name});
-           if (res != 1) {
+            if (res != 1) {
                 Log.e(TAG, "Feed " + name + " was not deleted from the database");
-            }
-            else {
+            } else {
                 Log.d(TAG, "Feed " + name + " was deleted from the database");
             }
         } catch (IotHubDatabaseException e) {
@@ -808,7 +793,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_FEED_ENTRY_FEED_ID, feed.getId());
             values.put(IotHubDataHandler.KEY_FEED_ENTRY_TIMESTAMP, new Date().getTime());
             values.put(IotHubDataHandler.KEY_FEED_ENTRY_DATA, data.toString());
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_FEED_ENTRY,
                     null,
                     values);
@@ -833,7 +818,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             int res = database.delete(IotHubDataHandler.TABLE_FEED_ENTRY,
                     IotHubDataHandler.KEY_FEED_ENTRY_ID + " = ? ",
                     new String[]{Long.toString(entry.getId())});
-           if (res != 1) {
+            if (res != 1) {
                 Log.e(TAG, "could not delete entry " + entry.toString());
             }
         } catch (IotHubDatabaseException e) {
@@ -861,7 +846,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME, packageName);
             values.put(IotHubDataHandler.KEY_PLUGIN_INFO_FILENAME, file == null ? null : file.getName());
 
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_PLUGIN_INFO, null, values);
             if (insertId != -1) {
                 //At point we should have everything set so it is time to retrieve the plugin from the database
@@ -875,18 +860,17 @@ public class KahvihubDatabase implements IotHubDatabase {
                     Log.e(TAG, "The plugin " + pluginInfo.getId() + " is not javascript");
                     pluginInfo = null;
                 }
-            }
-            else {
+            } else {
                 Log.e(TAG, "The insert of javascript plugin " + serviceName + " did not work");
             }
         } catch (IotHubDatabaseException e) {
             e.printStackTrace();
             pluginInfo = null;
         }
-       if (pluginInfo != null) {
-                database.setTransactionSuccessful();
-            }
-            database.endTransaction();
+        if (pluginInfo != null) {
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
         return pluginInfo;
     }
 
@@ -899,14 +883,14 @@ public class KahvihubDatabase implements IotHubDatabase {
         }
         try {
             checkOpenness();
-           database.beginTransaction();
+            database.beginTransaction();
             //First things first, insert the feed's values to the feed table
             ContentValues values = new ContentValues();
             values.put(IotHubDataHandler.KEY_PLUGIN_INFO_TYPE, IotHubDataHandler.NATIVE_PLUGIN);
             values.put(IotHubDataHandler.KEY_PLUGIN_INFO_SERVICE_NAME, serviceName);
             values.put(IotHubDataHandler.KEY_PLUGIN_INFO_PACKAGE_NAME, packageName);
             values.put(IotHubDataHandler.KEY_PLUGIN_INFO_FILENAME, file == null ? null : file.getName());
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_PLUGIN_INFO, null, values);
             if (insertId != -1) {
                 //At point we should have everything set so it is time to retrieve the plugin from the database
@@ -920,8 +904,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                     Log.e(TAG, "The plugin " + pluginInfo.getId() + " is not native");
                     pluginInfo = null;
                 }
-            }
-            else {
+            } else {
                 Log.e(TAG, "The insert of javascript plugin " + serviceName + " did not work");
             }
         } catch (IotHubDatabaseException e) {
@@ -951,23 +934,21 @@ public class KahvihubDatabase implements IotHubDatabase {
             int res = database.delete(IotHubDataHandler.TABLE_PLUGIN_INFO,
                     IotHubDataHandler.KEY_PLUGIN_INFO_ID + " = ?",
                     new String[]{Long.toString(id)});
-           if (res != 1) {
+            if (res != 1) {
                 Log.e(TAG, "Plugin " + id + " was not deleted from the database");
                 pluginInfo = null;
-            }
-            else {
+            } else {
                 Log.d(TAG, "Plugin " + id + " was deleted from the database");
             }
-        }
-        catch (IotHubDatabaseException e) {
+        } catch (IotHubDatabaseException e) {
             e.printStackTrace();
             pluginInfo = null;
         }
 
         if (pluginInfo != null) {
-                database.setTransactionSuccessful();
-            }
-            database.endTransaction();
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
         return pluginInfo;
     }
 
@@ -978,8 +959,8 @@ public class KahvihubDatabase implements IotHubDatabase {
             checkOpenness();
             String sql = "select * from " + IotHubDataHandler.TABLE_PLUGIN_INFO +
                     " WHERE " + IotHubDataHandler.KEY_PLUGIN_INFO_TYPE + " = '" + IotHubDataHandler.JAVASCRIPT_PLUGIN + "'";
-           Cursor cursor = database.rawQuery(sql, null);
-           while (cursor.moveToNext()) {
+            Cursor cursor = database.rawQuery(sql, null);
+            while (cursor.moveToNext()) {
                 long pluginId = cursor.getLong(cursor.getColumnIndex(IotHubDataHandler.KEY_PLUGIN_INFO_ID));
                 pluginInfos.add(getPluginInfo(pluginId));
             }
@@ -1017,8 +998,7 @@ public class KahvihubDatabase implements IotHubDatabase {
         if (list != null) {
             list.addAll(getNativePlugins());
             return list;
-        }
-        else {
+        } else {
             return getNativePlugins();
         }
     }
@@ -1039,11 +1019,9 @@ public class KahvihubDatabase implements IotHubDatabase {
                 String filename = cursor.getString(cursor.getColumnIndex(IotHubDataHandler.KEY_PLUGIN_INFO_FILENAME));
                 if (IotHubDataHandler.NATIVE_PLUGIN.equals(type)) {
                     pluginInfo = new PluginInfo(id, PluginInfo.Type.NATIVE, serviceName, packageName, filename);
-                }
-                else if (IotHubDataHandler.JAVASCRIPT_PLUGIN.equals(type)) {
+                } else if (IotHubDataHandler.JAVASCRIPT_PLUGIN.equals(type)) {
                     pluginInfo = new PluginInfo(id, PluginInfo.Type.JAVASCRIPT, serviceName, packageName, filename);
-                }
-                else {
+                } else {
                     Log.e(TAG, "Uknown type of plugin '" + type + "', must be (" +
                             IotHubDataHandler.NATIVE_PLUGIN + ", " +
                             IotHubDataHandler.JAVASCRIPT_PLUGIN + ")");
@@ -1074,7 +1052,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO, plugin.getId());
             values.put(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG, pluginInfoConfig);
 
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_ENABLER, null, values);
             if (insertId != -1) {
                 //At point we should have everything set so it is time to retrieve the plugin from the database
@@ -1084,18 +1062,17 @@ public class KahvihubDatabase implements IotHubDatabase {
                     Log.e(TAG, "The enabler should not be null");
                 }
                 //TODO maybe check that the plugins are the same
-            }
-            else {
+            } else {
                 Log.e(TAG, "The insert of enabler " + name + " did not work");
             }
         } catch (IotHubDatabaseException e) {
             e.printStackTrace();
             enabler = null;
         }
-       if (enabler != null) {
-                database.setTransactionSuccessful();
-            }
-            database.endTransaction();
+        if (enabler != null) {
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
 
         return enabler;
     }
@@ -1230,7 +1207,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_ENABLER_METADATA, metadata);
             values.put(IotHubDataHandler.KEY_ENABLER_PLUGIN_INFO_CONFIG, pluginInfoConfig);
             String selection = IotHubDataHandler.KEY_ENABLER_ID + " LIKE ?";
-            String[] selectionArgs = { String.valueOf(enabler.getId()) };
+            String[] selectionArgs = {String.valueOf(enabler.getId())};
             int count = database.update(
                     IotHubDataHandler.TABLE_ENABLER,
                     values,
@@ -1264,7 +1241,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_FEATURE_TYPE, type);
             values.put(IotHubDataHandler.KEY_FEATURE_IS_FEED, 0);
 
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_FEATURE, null, values);
             if (insertId != -1) {
                 //At point we should have everything set so it is time to retrieve the plugin from the database
@@ -1273,8 +1250,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                 if (feature == null) {
                     Log.e(TAG, "The feature should not be null");
                 }
-            }
-            else {
+            } else {
                 Log.e(TAG, "The insert of feature " + name + " did not work");
             }
         } catch (IotHubDatabaseException e) {
@@ -1282,9 +1258,9 @@ public class KahvihubDatabase implements IotHubDatabase {
             feature = null;
         }
         if (feature != null) {
-                database.setTransactionSuccessful();
-            }
-           database.endTransaction();
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
         return feature;
     }
 
@@ -1329,7 +1305,7 @@ public class KahvihubDatabase implements IotHubDatabase {
 
 
             String selection = IotHubDataHandler.KEY_FEATURE_ID + " LIKE ?";
-            String[] selectionArgs = { String.valueOf(feature.getId()) };
+            String[] selectionArgs = {String.valueOf(feature.getId())};
             int count = database.update(
                     IotHubDataHandler.TABLE_FEATURE,
                     values,
@@ -1385,9 +1361,9 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_SERVICE_METADATA, metadata);
             values.put(IotHubDataHandler.KEY_SERVICE_SERVICE_INFO, serviceInfo.getId());
             values.put(IotHubDataHandler.KEY_SERVICE_CONFIG, config);
-            values.put(IotHubDataHandler.KEY_SERVICE_BOOT_AT_STARTUP, bootAtStartup ? 1: 0);
+            values.put(IotHubDataHandler.KEY_SERVICE_BOOT_AT_STARTUP, bootAtStartup ? 1 : 0);
 
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_SERVICE, null, values);
             if (insertId != -1) {
                 //At point we should have everything set so it is time to retrieve the plugin from the database
@@ -1396,8 +1372,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                 if (service == null) {
                     Log.e(TAG, "The service " + name + " should not be null");
                 }
-            }
-            else {
+            } else {
                 Log.e(TAG, "The insert of service " + name + " did not work");
             }
         } catch (IotHubDatabaseException e) {
@@ -1405,9 +1380,9 @@ public class KahvihubDatabase implements IotHubDatabase {
             service = null;
         }
         if (service != null) {
-                database.setTransactionSuccessful();
-            }
-         database.endTransaction();
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
         return service;
     }
 
@@ -1426,7 +1401,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_SERVICE_INFO_SERVICE_NAME, name);
             values.put(IotHubDataHandler.KEY_SERVICE_INFO_FILENAME, file.getName());
 
-            long insertId= database.insert(
+            long insertId = database.insert(
                     IotHubDataHandler.TABLE_SERVICE_INFO, null, values);
             if (insertId != -1) {
                 //At point we should have everything set so it is time to retrieve the plugin from the database
@@ -1435,8 +1410,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                 if (service == null) {
                     Log.e(TAG, "The service info " + name + " should not be null");
                 }
-            }
-            else {
+            } else {
                 Log.e(TAG, "The insert of service info " + name + " did not work");
             }
         } catch (IotHubDatabaseException e) {
@@ -1444,9 +1418,9 @@ public class KahvihubDatabase implements IotHubDatabase {
             service = null;
         }
         if (service != null) {
-                database.setTransactionSuccessful();
-            }
-            database.endTransaction();
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
         return service;
     }
 
@@ -1463,8 +1437,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                     new String[]{Long.toString(service.getId())});
             if (res != 1) {
                 Log.i(TAG, "Service " + service.getId() + " delete from db");
-            }
-            else {
+            } else {
                 Log.w(TAG, "Delete service " + service.getId() + " has not affected any row");
                 service = null;
             }
@@ -1494,20 +1467,18 @@ public class KahvihubDatabase implements IotHubDatabase {
             if (res != 1) {
                 Log.e(TAG, "Service plugin " + id + " was not deleted from the database");
                 serviceInfo = null;
-            }
-            else {
+            } else {
                 Log.d(TAG, "Service plugin " + id + " was deleted from the database");
             }
-        }
-        catch (IotHubDatabaseException e) {
+        } catch (IotHubDatabaseException e) {
             e.printStackTrace();
             serviceInfo = null;
         }
 
-         if (serviceInfo != null) {
-               database.setTransactionSuccessful();
-            }
-            database.endTransaction();
+        if (serviceInfo != null) {
+            database.setTransactionSuccessful();
+        }
+        database.endTransaction();
         return serviceInfo;
     }
 
@@ -1530,8 +1501,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                 if (serviceInfo != null) {
                     service = new Service(id, serviceInfo,
                             name, metadata, config, bootOnStartup);
-                }
-                else {
+                } else {
                     Log.e(TAG, "ServiceInfo " + serviceInfoId + " should not be null");
                 }
             }
@@ -1562,8 +1532,7 @@ public class KahvihubDatabase implements IotHubDatabase {
                 if (serviceInfo != null) {
                     service = new Service(id, serviceInfo,
                             name, metadata, config, bootOnStartup);
-                }
-                else {
+                } else {
                     Log.e(TAG, "ServiceInfo " + serviceInfoId + " should not be null");
                 }
             }
@@ -1651,7 +1620,7 @@ public class KahvihubDatabase implements IotHubDatabase {
             values.put(IotHubDataHandler.KEY_SERVICE_BOOT_AT_STARTUP, bootAtStartup ? 1 : 0);
 
             String selection = IotHubDataHandler.KEY_SERVICE_ID + " LIKE ?";
-            String[] selectionArgs = { String.valueOf(service.getId()) };
+            String[] selectionArgs = {String.valueOf(service.getId())};
             int count = database.update(
                     IotHubDataHandler.TABLE_SERVICE,
                     values,

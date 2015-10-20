@@ -23,6 +23,23 @@ uploadArchives {
     }
 }
 
+task buildNative(type: Exec, description: 'Compile JNI source files') {
+    commandLine 'make',
+            '-C', '../jni'
+}
+
+task cleanNative(type: Exec, description: 'Clean JNI object files') {
+    commandLine 'make',
+            '-C', '../jni',
+            'clean'
+}
+
+clean.dependsOn 'cleanNative'
+
+tasks.withType(JavaCompile) {
+    compileTask -> compileTask.dependsOn buildNative
+}
+
 test {
 	beforeTest { descriptor ->
     	logger.lifecycle("Running test: ${descriptor}")
