@@ -9,6 +9,9 @@ NAME := kahvihub
 PORT := 80
 TEST_PORT := 8080
 
+# Host, use '0.0.0.0' to allow binding to external connections
+HOST := 0.0.0.0
+
 # Root folder to install kahvihub
 ROOT_INSTALL := /usr/local/
 TEST_ROOT_INSTALL := test/
@@ -41,6 +44,7 @@ clean:
 embedded.test:
 	#Need to create a config file
 	@echo "{\"name\": \"$(NAME)-test\", \"port\": $(TEST_PORT)," > embedded/$(NAME)-test.conf
+	@echo "\"host\": \"$(HOST)\"," >> embedded/$(NAME)-test.conf
 	@echo "\"libdir\": \"$(TEST_ROOT_INSTALL)$(LIBDIR)\"," >> embedded/$(NAME)-test.conf
 	@echo "\"logdir\": \"$(TEST_ROOT_VAR)$(LOGDIR)\"," >> embedded/$(NAME)-test.conf
 	@echo "\"dbdir\": \"$(TEST_ROOT_VAR)$(DBDIR)\"," >> embedded/$(NAME)-test.conf

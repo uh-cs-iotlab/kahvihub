@@ -117,7 +117,7 @@ public class KahviHub {
 						if (dir.exists() && dir.isDirectory())
 							for(File file: dir.listFiles()) file.delete(); 
 					}
-					final IotHubHTTPD server = new IotHubHTTPD(hubConfig.getPort(), libdir);
+					final IotHubHTTPD server = new IotHubHTTPD(hubConfig.getPort(), libdir, hubConfig.getHost());
 					init(hubConfig);
 					try {
 						server.start();
