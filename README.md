@@ -8,6 +8,11 @@ Authors
 + http://www.cs.helsinki.fi/u/mineraud/
 + http://github.com/jmineraud
 
+Install
+----------
+Please check install information on [INSTALL.md](INSTALL.md)
+
+
 Known issues
 ------------
 
