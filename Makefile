@@ -50,10 +50,10 @@ embedded.test:
 	@if [ ! -d "embedded/$(TEST_ROOT_INSTALL)$(LIBDIR)" ]; then mkdir -p embedded/$(TEST_ROOT_INSTALL)$(LIBDIR); fi
 	@if [ ! -d "embedded/$(TEST_ROOT_VAR)$(LOGDIR)" ]; then mkdir -p embedded/$(TEST_ROOT_VAR)$(LOGDIR); fi
 	@if [ ! -d "embedded/$(TEST_ROOT_VAR)$(DBDIR)" ]; then mkdir -p embedded/$(TEST_ROOT_VAR)$(DBDIR); fi
-	$(GRADLE) embedded:build
+	$(GRADLE) embedded:build -x test
 	
 embedded.test.run:
-	$(GRADLE) -q embedded:run '-Pconf=-c,$(NAME)-test.conf'
+	$(GRADLE) -q embedded:run '-Pconf=-c,$(NAME)-test.conf' -x test
 
 test: embedded.test
 run: embedded.test.run
