@@ -43,11 +43,21 @@ public class IotHubHTTPD extends NanoHTTPD {
 	private static final String TAG = "IotHubHTTPD";
 	private int port;
 	private Path libdir;
+	private String host;
 	private HttpRequestHandler requestHandler;
 
 	public IotHubHTTPD(int port, Path libdir) {
 		super("127.0.0.1", port);
 		this.port = port;
+		this.host = "127.0.0.1";
+		this.libdir = libdir;
+		this.requestHandler = new BasicIotHubApiRequestHandler(this.libdir);
+	}
+
+	public IotHubHTTPD(int port, Path libdir, String host) {
+		super(host, port);
+		this.port = port;
+		this.host = host;
 		this.libdir = libdir;
 		this.requestHandler = new BasicIotHubApiRequestHandler(this.libdir);
 	}
@@ -66,6 +76,10 @@ public class IotHubHTTPD extends NanoHTTPD {
 
 	public int getPort() {
 		return this.port;
+	}
+
+	public String getHost() {
+		return this.host;
 	}
 
 	@Override

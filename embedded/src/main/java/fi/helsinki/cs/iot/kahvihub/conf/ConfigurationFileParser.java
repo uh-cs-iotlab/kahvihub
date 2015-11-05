@@ -87,6 +87,7 @@ public class ConfigurationFileParser {
 		
 		String name = getStringProperty(root, "name");
 		int port = getIntProperty(root, "port");
+		String host = getStringProperty(root, "host");
 		String libdir = getStringProperty(root, "libdir");
 		String logdir = getStringProperty(root, "logdir");
 		String dbdir = getStringProperty(root, "dbdir");
@@ -94,7 +95,7 @@ public class ConfigurationFileParser {
 		int dbversion = getIntProperty(root, "dbversion");
 		boolean debugMode = getBooleanProperty(root, "debug");
 		
-		return new HubConfig(name, port, libdir, logdir, 
+		return new HubConfig(name, host, port, libdir, logdir, 
 				dbdir, dbname, dbversion, debugMode);
 	}
 }

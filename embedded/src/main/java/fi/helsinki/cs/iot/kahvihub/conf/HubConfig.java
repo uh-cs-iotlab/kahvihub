@@ -24,17 +24,19 @@ package fi.helsinki.cs.iot.kahvihub.conf;
 public class HubConfig {
 	private String name;
 	private int port;
+	private String host;
 	private String libdir;
 	private String logdir;
 	private String dbdir;
 	private String dbname;
 	private int dbversion;
 	private boolean debugMode;
-	
-	public HubConfig(String name, int port, String libdir, String logdir, 
+
+	public HubConfig(String name, String host, int port, String libdir, String logdir, 
 			String dbdir, String dbname, int dbversion,
 			boolean debugMode) {
 		this.name = name;
+		this.host = host;
 		this.port = port;
 		this.libdir = libdir;
 		this.logdir = logdir;
@@ -45,12 +47,16 @@ public class HubConfig {
 	}
 	
 	public HubConfig(int port, String libdir, String logdir, String dbdir, String dbname, int dbversion, boolean debugMode) {
-		this("iothub", port, libdir, logdir, 
+		this("iothub", "127.0.0.1", port, libdir, logdir, 
 				dbdir, dbname, dbversion, debugMode);
 	}
 
 	public String getName() {
 		return name;
+	}
+
+	public String getHost () {
+		return host;
 	}
 
 	public int getPort() {
