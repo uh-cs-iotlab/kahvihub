@@ -17,7 +17,11 @@
  */
 package fi.helsinki.cs.iot.hub.model.feed;
 
+import org.json.JSONException;
+import org.json.JSONArray;
 import org.json.JSONObject;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 
@@ -25,14 +29,42 @@ import org.json.JSONObject;
  *
  */
 public class ExecutableFeedDescription {
-	
-	public ExecutableFeedDescription() {
-		
+
+	private static final String TAG = "ExecutableFeedDescription";
+	private JSONObject description;
+	private String source;
+	private List<String> params;
+
+	public ExecutableFeedDescription(JSONObject description) {
+		this.description = description;
+
+		try {
+			if (description.has("source")) {
+				this.source = description.getString("source");
+			}
+
+			if (description.has("params")) {
+				JSONArray jArray = description.getJSONArray("params");
+				this.params = new ArrayList<String>();
+				for (int i=0; i < jArray.length(); i++) {
+	  				this.params.add(jArray.getJSONObject(i).getString("value"));
+				}
+			}
+		} catch (JSONException e) {
+			this.params = null;
+		}
 	}
-	
+
+	public String getSource() {
+		return this.source;
+	}
+
+	public List<?> getParams() {
+		return this.params;
+	}
+
 	public JSONObject toJSON() {
-		JSONObject jDescription = new JSONObject();
-		return jDescription;
+		return this.description;
 	}
 
 	@Override
