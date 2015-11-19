@@ -27,11 +27,11 @@ test {
 	beforeTest { descriptor ->
     	logger.lifecycle("Running test: ${descriptor}")
   	}
-    jvmArgs = ['-Djava.library.path=../jni']
+    jvmArgs = ["-Djava.library.path=${rootDir}/jni"]
 }
 
 run {
-    jvmArgs = ['-Djava.library.path=../jni']
+    jvmArgs = ["-Djava.library.path=${rootDir}/jni"]
     if(project.hasProperty('conf')){
     	 run.args project.conf.split(',')
     }
