@@ -107,10 +107,6 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 		return fields;
 	}
 
-	private ExecutableFeedDescription getExecutableFeedDescription(JSONObject jFeedDescription) {
-		return new ExecutableFeedDescription();
-	}
-
 	private AtomicFeed handleAtomicFeedDescriptionPost(JSONObject jFeedDescription) {
 		//TODO
 		return null;
@@ -138,6 +134,10 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 		return feed;
 	}
 
+	private ExecutableFeedDescription getExecutableFeedDescription(JSONObject jFeedDescription) {
+		return new ExecutableFeedDescription(jFeedDescription);
+	}
+
 	private ExecutableFeed handleExecutableFeedDescriptionPost(JSONObject jFeedDescription) {
 		try {
 			String name = jFeedDescription.getString("name");
@@ -149,6 +149,7 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 					getExecutableFeedDescription(jFeedDescription.getJSONObject(ExecutableFeed.KEY_EXECUTABLE_FEED));
 			ExecutableFeed feed = IotHubDataAccess.getInstance().addExecutableFeed(name, metadata, 
 					readable, writable, keywords, executableFeedDescription);
+			Log.e(TAG, "Executable script descr: " + feed.getDescription());
 			return feed;
 		} catch (JSONException e) {
 			Log.e(TAG, "Could not generate the executable feed");
@@ -191,8 +192,9 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 			ComposedFeed composedFeed = (ComposedFeed)feed;
 			return composedFeed.isWritable();
 		case EXECUTABLE:
+			// Currently not used for executable feeds, only composed feed uses this
 			ExecutableFeed executableFeed = (ExecutableFeed)feed;
-			return executableFeed.executeScript(libdir, data);
+			return executableFeed.executeScript(libdir, data) != null;
 		default:
 			return false;
 		}
@@ -266,8 +268,8 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 			String data = uri.getBodyData();
 			feed = IotHubDataAccess.getInstance().getFeed(uri.getIdentifiers().get(0));
 			if (feed == null) {
-				Log.e(TAG, "No feed could be find with that name");
-				return getResponseKo(ERROR, "No feed could be find with that name");
+				Log.e(TAG, "No feed could be found with that name");
+				return getResponseKo(ERROR, "No feed could be found with that name");
 			}
 			else {
 				switch (feed.getFeedType()) {
@@ -285,12 +287,17 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 	}
 
 	private Response handlePostExecutableFeed(ExecutableFeed feed, String data) {
-		if (data != null && feed.executeScript(libdir, data)) {
-			return getResponseOk("");
+		if (data != null) {
+			String result = feed.executeScript(libdir, data);
+			if (result != null) {
+				return getResponseOk(result);
+			} else {
+				return getResponseKo(ERROR, "The script could not be executed correctly");
+			}
 		}
 		else {
-			Log.e(TAG, "The script was not successfully evaluted by " + feed.getName());
-			return getResponseKo(ERROR, "The script was not successfully evaluted by " + feed.getName());
+			Log.e(TAG, "The script was not successfully evaluated by " + feed.getName());
+			return getResponseKo(ERROR, "The script was not successfully evaluated by " + feed.getName());
 		}
 	}
 
@@ -304,7 +311,7 @@ public class FeedPostRequestHandler extends IotHubApiRequestHandler {
 				return getResponseOk(data);
 			}
 			else {
-				return getResponseKo(ERROR, "The data  could not be posted to feed " + feed.getName());
+				return getResponseKo(ERROR, "The data could not be posted to feed " + feed.getName());
 			}
 		}
 		else {

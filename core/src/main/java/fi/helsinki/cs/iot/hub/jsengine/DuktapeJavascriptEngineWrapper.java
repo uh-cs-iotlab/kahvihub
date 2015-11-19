@@ -56,12 +56,20 @@ import fi.helsinki.cs.iot.hub.utils.ScriptUtils;
  */
 public class DuktapeJavascriptEngineWrapper {
 
+	private static final String TAG = "DuktapeJavascriptEngineWrapper";
+
 	// load the built libraries
 	static {
-		System.loadLibrary("jsDuktapeJni");
+		try {
+			// Not a portable way to load library. TODO: fix loadLibrary
+    		System.load(System.getProperty("java.library.path") + "/libjsDuktapeJni.so");
+    		// System.loadLibrary("jsDuktapeJni"); // This fails somehow?
+	    } catch (UnsatisfiedLinkError e) {
+	    	Log.e(TAG, "LIB PATH: " + System.getProperty("java.library.path"));
+			Log.e(TAG, "Native code library jsDuktapeJni failed to load.\n" + e);
+	    }		
 	}
 
-	private static final String TAG = "DuktapeJavascriptEngineWrapper";
 
 	public static final int TCP_SOCKET = 1;
 	public static final int HTTP_REQUEST = 2;

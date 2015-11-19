@@ -508,7 +508,7 @@ public class IotHubDatabaseSqliteJDBCImpl implements IotHubDatabase {
 				boolean feedReadable = rs.getInt(3) != 0;
 				boolean feedWritable = rs.getInt(4) != 0;
 				//TODO make a table for the feed description and get the data from it
-				ExecutableFeedDescription description = new ExecutableFeedDescription();
+				ExecutableFeedDescription description = new ExecutableFeedDescription(new JSONObject());
 				List<String> keywords = getFeedKeywords(id);
 				executableFeed = new ExecutableFeed(id, feedName, feedMetadata, keywords, feedReadable, feedWritable, description);
 			}

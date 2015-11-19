@@ -39,7 +39,7 @@ public class FeedRequestHandler extends IotHubApiRequestHandler {
 
 	public FeedRequestHandler(Path libdir) {
 		this.subHandlers = new HashMap<>();
-		this.subHandlers.put(Method.GET, new FeedGetRequestHandler());
+		this.subHandlers.put(Method.GET, new FeedGetRequestHandler(libdir));
 		this.subHandlers.put(Method.POST, new FeedPostRequestHandler(libdir));
 		this.subHandlers.put(Method.PUT, new FeedPutRequestHandler());
 		this.subHandlers.put(Method.DELETE, new FeedDeleteRequestHandler());

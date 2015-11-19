@@ -71,7 +71,7 @@ public class ExecutableFeed extends Feed {
 			}
 			jDescription.put("readable", readable);
 			jDescription.put("writable", writable);
-			jDescription.put(KEY_EXECUTABLE_FEED, description.toJSON());
+			jDescription.put(KEY_EXECUTABLE_FEED, this.description.toString());
 			return jDescription.toString();
 		} catch (JSONException e) {
 			Log.e(TAG, "Could not generate the JSON description of feed " + super.getName());
@@ -81,8 +81,19 @@ public class ExecutableFeed extends Feed {
 
     @Override
     public String getValue() {
-    	//TODO auto generated stuff
-        return null;
+    	// Cannot return value without JS plugin info. Call the other 
+    	// constructor with Path parameter
+		return null;
+    }
+
+    public String getValue(Path libdir) {
+    	if (this.description.getSource() != null) {
+    		// if (executeScript(libdir, this.description.getSource())) {
+    		// 	return "OK"; 
+    		// }
+    		return "OK";
+    	}
+		return null;
     }
 
     @Override
@@ -102,14 +113,14 @@ public class ExecutableFeed extends Feed {
 		return description;
 	}*/
 
-	public boolean executeScript(Path libdir, String script) {
+	public String executeScript(Path libdir, String script) {
 		DuktapeJavascriptEngineWrapper djew = new DuktapeJavascriptEngineWrapper(libdir);
 		try {
-			return djew.runScript(script) != null;
+			return djew.runScript(script);
 		} catch (JavascriptEngineException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return false;
+		return null;
 	}
 }
