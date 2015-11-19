@@ -17,6 +17,7 @@
  */
 package fi.helsinki.cs.iot.hub.api.handlers.feeds;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,10 +48,17 @@ public class FeedGetRequestHandler extends IotHubApiRequestHandler {
 
 	private static final String TAG = "FeedGetRequestHandler";
 	private List<Method> methods;
+	private Path libdir;
 
 	public FeedGetRequestHandler() {
 		this.methods = new ArrayList<>();
 		this.methods.add(Method.GET);	
+	}
+
+	public FeedGetRequestHandler(Path libdir) {
+		this.methods = new ArrayList<>();
+		this.methods.add(Method.GET);
+		this.libdir = libdir;
 	}
 
 	/* (non-Javadoc)
@@ -138,19 +146,19 @@ public class FeedGetRequestHandler extends IotHubApiRequestHandler {
 	
 	private Response handleExecutableFeed(Feed feed) {
 		ExecutableFeed executableFeed = (ExecutableFeed)feed;
-		if (executableFeed.isReadable()) {
+		if (!executableFeed.isReadable()) {
 			Log.e(TAG, "The feed " + feed.getName() + " is not readable");
 			return getResponseKo(ERROR, "The feed " + feed.getName() + " is not readable");
 		}
 		else {
-			String jValue = executableFeed.getValue();
+			String jValue = executableFeed.getValue(libdir);
 			if (jValue != null) {
 				Log.d(TAG, "Returns the feed's value");
 				return getResponseOk(jValue.toString());
 			}
 			else {
-				Log.e(TAG, "The feed " + feed.getName() + " has not value");
-				return getResponseKo(ERROR, "The feed " + feed.getName() + " has not value");
+				Log.e(TAG, "The feed " + feed.getName() + " has no value");
+				return getResponseKo(ERROR, "The feed " + feed.getName() + " has no value");
 			}
 		}
 	}
